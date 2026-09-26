@@ -1,26 +1,140 @@
 @import "tailwindcss";
 
+/*
+ * "Care label" palette: undyed cotton ground, ink text, two natural dyes for the
+ * two sub-scores (indigo = material, ochre = price) and madder for price drops.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --cloth: #f3eee4;
+  --cloth-deep: #e8e0d0;
+  --paper: #fbf8f2;
+  --ink: #1c1a17;
+  --ink-soft: #5b554c;
+  --ink-faint: #8f877b;
+  --rule: #d6ccb9;
+  --indigo: #28386b;
+  --indigo-wash: #dfe3ef;
+  --ochre: #b7822a;
+  --ochre-wash: #f1e4c8;
+  --madder: #a8352b;
+  --madder-wash: #f3dcd6;
+  --warn: #8a5a00;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-cloth: var(--cloth);
+  --color-cloth-deep: var(--cloth-deep);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-rule: var(--rule);
+  --color-indigo: var(--indigo);
+  --color-indigo-wash: var(--indigo-wash);
+  --color-ochre: var(--ochre);
+  --color-ochre-wash: var(--ochre-wash);
+  --color-madder: var(--madder);
+  --color-madder-wash: var(--madder-wash);
+  --color-warn: var(--warn);
+  --font-display: var(--font-instrument), var(--font-noto-serif), serif;
+  --font-sans: var(--font-noto-sans), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--cloth);
+  color: var(--ink);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  /* Faint woven texture: two crossed hairline gradients + noise. */
+  background-color: var(--cloth);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.3 0 0 0 0 0.22 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(0deg, rgba(90, 76, 52, 0.025) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(90, 76, 52, 0.02) 0 1px, transparent 1px 3px);
+}
+
+::selection {
+  background: var(--indigo);
+  color: var(--paper);
+}
+
+/* Stitched edge used on labels and panels. */
+.stitch {
+  outline: 1px dashed color-mix(in srgb, var(--ink) 28%, transparent);
+  outline-offset: -5px;
+}
+
+/* Weight slider: a balance beam between indigo (material) and ochre (price). */
+.balance {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 28px;
+  background: transparent;
+  cursor: grab;
+}
+.balance:active {
+  cursor: grabbing;
+}
+.balance::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--ochre) 0%, var(--ochre) calc(100% - var(--pos)), var(--indigo) calc(100% - var(--pos)), var(--indigo) 100%);
+}
+.balance::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--ochre) 0%, var(--ochre) calc(100% - var(--pos)), var(--indigo) calc(100% - var(--pos)), var(--indigo) 100%);
+}
+.balance::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  margin-top: -9px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  box-shadow: 0 2px 0 var(--ink);
+  transition: transform 0.15s;
+}
+.balance::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  box-shadow: 0 2px 0 var(--ink);
+}
+.balance:focus-visible::-webkit-slider-thumb {
+  outline: 3px solid color-mix(in srgb, var(--indigo) 45%, transparent);
+  outline-offset: 2px;
+}
+.balance:hover::-webkit-slider-thumb {
+  transform: scale(1.08);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise {
+  animation: rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise {
+    animation: none;
+  }
+  * {
+    transition: none !important;
+  }
 }
