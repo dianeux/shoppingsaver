@@ -6,8 +6,9 @@ import { db } from "@/db/client";
  *  - enter: today's sale price is below the previous day's snapshot; that
  *    previous price becomes the day-0 (baseline) price
  *  - a further drop while listed restarts the window but keeps the day-0 price
- *  - leave: as soon as the price is back at (or above) the day-0 price, or once
- *    the latest drop is DROP_WINDOW_DAYS old (drop day = day 1, listed days 1–7)
+ *  - leave: as soon as the price is back at (or above) the day-0 price, once
+ *    the latest drop is DROP_WINDOW_DAYS old (drop day = day 1, listed days 1–7),
+ *    or when the product sells out
  */
 export const DROP_WINDOW_DAYS = 7;
 
@@ -25,7 +26,7 @@ export async function detectPriceDrops(today: string) {
       SELECT DISTINCT ON (s.product_id) p.id AS product_id, s.sale_price AS previous_price, p.sale_price AS current_price
       FROM products p
       JOIN price_snapshots s ON s.product_id = p.id
-      WHERE p.active
+      WHERE p.active AND p.in_stock
         AND s.snapshot_date < ${today}::date
         AND s.snapshot_date >= ${today}::date - ${PREVIOUS_LOOKBACK_DAYS}::int
       ORDER BY s.product_id, s.snapshot_date DESC
@@ -58,7 +59,8 @@ export async function detectPriceDrops(today: string) {
       WHERE p.id = d.product_id
         AND (d.current_price >= d.baseline_price
              OR ${today}::date - d.detected_on >= ${DROP_WINDOW_DAYS}::int
-             OR NOT p.active)
+             OR NOT p.active
+             OR NOT p.in_stock)
     `);
   });
 }

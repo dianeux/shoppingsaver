@@ -14,6 +14,7 @@ export const minBrandsPerL2 = Number(process.env.MIN_BRANDS_PER_L2 ?? MIN_BRANDS
 /** A site whose last good run is older than this is shown as degraded (PRD F7). */
 const STALE_AFTER_HOURS = 36;
 
+/** Storefront queries only ever show listed, in-stock products. */
 const cardColumns = {
   id: products.id,
   brand: products.brand,
@@ -66,7 +67,7 @@ export async function productsForL2(l2: L2): Promise<CardProduct[]> {
     .select(cardColumns)
     .from(products)
     .leftJoin(priceDrops, eq(priceDrops.productId, products.id))
-    .where(and(eq(products.categoryL2, l2), eq(products.active, true)));
+    .where(and(eq(products.categoryL2, l2), eq(products.active, true), eq(products.inStock, true)));
   return rows.map(toCard);
 }
 
@@ -77,7 +78,7 @@ export async function productsForL1(l1: string, liveL2s: L2[]): Promise<CardProd
     .select(cardColumns)
     .from(products)
     .leftJoin(priceDrops, eq(priceDrops.productId, products.id))
-    .where(and(eq(products.categoryL1, l1), eq(products.active, true), inArray(products.categoryL2, liveL2s)));
+    .where(and(eq(products.categoryL1, l1), eq(products.active, true), eq(products.inStock, true), inArray(products.categoryL2, liveL2s)));
   return rows.map(toCard);
 }
 
@@ -86,7 +87,7 @@ export async function productsForBrand(brand: BrandId): Promise<CardProduct[]> {
     .select(cardColumns)
     .from(products)
     .leftJoin(priceDrops, eq(priceDrops.productId, products.id))
-    .where(and(eq(products.brand, brand), eq(products.active, true)));
+    .where(and(eq(products.brand, brand), eq(products.active, true), eq(products.inStock, true)));
   return rows.map(toCard);
 }
 
@@ -97,7 +98,7 @@ export async function weeklyDrops(today = new Date()): Promise<CardProduct[]> {
     .select(cardColumns)
     .from(priceDrops)
     .innerJoin(products, eq(priceDrops.productId, products.id))
-    .where(and(eq(products.active, true), gte(priceDrops.detectedOn, since)))
+    .where(and(eq(products.active, true), eq(products.inStock, true), gte(priceDrops.detectedOn, since)))
     .orderBy(desc(priceDrops.dropPct));
   return rows.map(toCard);
 }
@@ -114,7 +115,7 @@ export async function coverage(): Promise<L2Coverage[]> {
   const rows = await db
     .select({ l2: products.categoryL2, brand: products.brand, n: sql<number>`count(*)::int` })
     .from(products)
-    .where(eq(products.active, true))
+    .where(and(eq(products.active, true), eq(products.inStock, true)))
     .groupBy(products.categoryL2, products.brand);
   const byL2 = new Map<string, L2Coverage>();
   for (const r of rows) {
@@ -149,7 +150,7 @@ export async function topValueByL1(liveL2s: L2[]): Promise<Map<string, CategoryC
   }>(sql`
     SELECT DISTINCT ON (category_l1) category_l1, category_l2, brand, product_name, image_url, value_score, sale_price
     FROM ${products}
-    WHERE active AND image_url IS NOT NULL AND value_score IS NOT NULL
+    WHERE active AND in_stock AND image_url IS NOT NULL AND value_score IS NOT NULL
       AND category_l2 IN (${sql.join(liveL2s.map((l) => sql`${l}`), sql`, `)})
     ORDER BY category_l1, value_score DESC, sale_price ASC
   `);

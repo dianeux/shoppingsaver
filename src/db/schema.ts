@@ -46,7 +46,10 @@ export const products = pgTable(
     tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
     /** Hash of the source fields that feed extraction; unchanged hash = skip re-extraction. */
     contentHash: text("content_hash").notNull(),
+    /** Still listed on the brand site (false = gone from the catalog). */
     active: boolean("active").notNull().default(true),
+    /** At least one variant is purchasable. Sold-out products stay indexed (price history) but are hidden. */
+    inStock: boolean("in_stock").notNull().default(true),
     firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -73,6 +76,7 @@ export interface CrawlStats {
   kept: number;
   skippedNonWomen: number;
   excluded: number;
+  soldOut: number;
   unmappedCategories: Record<string, number>;
   detailFetched: number;
   extracted: { parser: number; llm: number; failed: number; notDisclosed: number; reused: number };

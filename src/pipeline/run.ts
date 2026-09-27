@@ -11,7 +11,7 @@ import { mujiAdapter } from "./adapters/muji";
 import { extractComposition, LlmBudget } from "./extract";
 import { detectPriceDrops } from "./drops";
 import { rescoreAll } from "./rescore";
-import type { BrandAdapter, RawProduct } from "./types";
+import type { BrandAdapter, RawProduct, RawVariant } from "./types";
 
 /**
  * Nightly index job (PRD ch.6): fetch → extract → normalize → score → index.
@@ -34,15 +34,23 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function priceOf(p: RawProduct): { list: number; sale: number } {
-  const pool = p.variants.some((v) => v.available) ? p.variants.filter((v) => v.available) : p.variants;
-  const cheapest = pool.reduce((a, b) => (b.price < a.price ? b : a));
+/**
+ * Variants that describe what a shopper can buy: the in-stock ones, or all of
+ * them for a sold-out product (so its price history keeps recording).
+ */
+function purchasable(p: RawProduct): RawVariant[] {
+  const inStock = p.variants.filter((v) => v.available);
+  return inStock.length ? inStock : p.variants;
+}
+
+function priceOf(variants: RawVariant[]): { list: number; sale: number } {
+  const cheapest = variants.reduce((a, b) => (b.price < a.price ? b : a));
   return { sale: cheapest.price, list: cheapest.compareAtPrice ?? cheapest.price };
 }
 
-function colorsOf(p: RawProduct, stats: CrawlStats): ProductColor[] {
+function colorsOf(variants: RawVariant[], stats: CrawlStats): ProductColor[] {
   const byColor = new Map<string, ProductColor>();
-  for (const v of p.variants) {
+  for (const v of variants) {
     if (byColor.has(v.color)) continue;
     const family = colorFamily(v.color);
     // "Default" = the product has no color option; nothing to map.
@@ -59,7 +67,7 @@ async function runBrand(adapter: BrandAdapter, budget: LlmBudget): Promise<void>
     .values({ brand, status: "running", mappingVersion: adapter.mappingVersion })
     .returning({ id: crawlRuns.id });
   const stats: CrawlStats = {
-    listed: 0, kept: 0, skippedNonWomen: 0, excluded: 0, unmappedCategories: {}, detailFetched: 0,
+    listed: 0, kept: 0, skippedNonWomen: 0, excluded: 0, soldOut: 0, unmappedCategories: {}, detailFetched: 0,
     extracted: { parser: 0, llm: 0, failed: 0, notDisclosed: 0, reused: 0 }, unmappedColors: {}, deactivated: 0,
   };
   const tokensBefore = { in: budget.inputTokens, out: budget.outputTokens };
@@ -127,8 +135,11 @@ async function runBrand(adapter: BrandAdapter, budget: LlmBudget): Promise<void>
         console.warn(`[${brand}] extraction_failed ${raw.name}: ${outcome.reason ?? ""} :: ${compositionRaw?.slice(0, 120)}`);
       }
 
-      const { list, sale } = priceOf(raw);
-      const colors = colorsOf(raw, stats);
+      const inStock = raw.variants.some((v) => v.available);
+      if (!inStock) stats.soldOut++;
+      const variants = purchasable(raw);
+      const { list, sale } = priceOf(variants);
+      const colors = colorsOf(variants, stats);
       const main = outcome.composition?.main ?? [];
       const row = {
         id,
@@ -144,7 +155,7 @@ async function runBrand(adapter: BrandAdapter, budget: LlmBudget): Promise<void>
         salePrice: sale,
         colors,
         colorFamilies: [...new Set(colors.map((c) => c.family).filter((f): f is NonNullable<typeof f> => !!f))],
-        sizeRange: sortSizes(raw.variants.map((v) => normalizeSize(v.size))),
+        sizeRange: sortSizes(variants.map((v) => normalizeSize(v.size))),
         compositionRaw,
         composition: outcome.composition,
         compositionStatus: outcome.status,
@@ -155,6 +166,7 @@ async function runBrand(adapter: BrandAdapter, budget: LlmBudget): Promise<void>
         tags: raw.tags,
         contentHash: raw.contentHash,
         active: true,
+        inStock,
         lastSeenAt: new Date(),
       };
       await db
@@ -208,7 +220,7 @@ function reportQuality(brand: string, s: CrawlStats) {
   console.log(
     `[${brand}] kept=${s.kept} listed=${s.listed} details=${s.detailFetched} ` +
       `parser=${s.extracted.parser} llm=${s.extracted.llm} reused=${s.extracted.reused} ` +
-      `failed=${s.extracted.failed} (${(failRate * 100).toFixed(1)}%) not_disclosed=${s.extracted.notDisclosed} ` +
+      `failed=${s.extracted.failed} (${(failRate * 100).toFixed(1)}%) not_disclosed=${s.extracted.notDisclosed} sold_out=${s.soldOut} ` +
       `unmapped_products=${unmapped} unmapped_colors=${unmappedColors} deactivated=${s.deactivated}`,
   );
   if (failRate > EXTRACTION_FAILURE_ALERT) console.error(`::error::[${brand}] extraction failure rate ${(failRate * 100).toFixed(1)}% > 5%`);

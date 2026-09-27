@@ -15,7 +15,7 @@ describe.skipIf(!enabled)("detectPriceDrops (database)", async () => {
 
   const day = (offset: number) => new Date(Date.UTC(2020, 0, 1 + offset)).toISOString().slice(0, 10);
   let ids: string[] = [];
-  let original: Map<string, number>;
+  let original: Map<string, { sale: number; inStock: boolean }>;
 
   /** One simulated nightly run: set today's prices, snapshot them, detect. */
   async function night(offset: number, prices: Record<string, number>) {
@@ -29,15 +29,20 @@ describe.skipIf(!enabled)("detectPriceDrops (database)", async () => {
   }
 
   beforeAll(async () => {
-    const rows = await db.select({ id: products.id, sale: products.salePrice }).from(products).where(eq(products.active, true)).limit(2);
+    const rows = await db
+      .select({ id: products.id, sale: products.salePrice, inStock: products.inStock })
+      .from(products)
+      .where(eq(products.active, true))
+      .limit(2);
     ids = rows.map((r) => r.id);
-    original = new Map(rows.map((r) => [r.id, r.sale]));
+    original = new Map(rows.map((r) => [r.id, { sale: r.sale, inStock: r.inStock }]));
+    await db.update(products).set({ inStock: true }).where(inArray(products.id, ids));
   });
 
   afterAll(async () => {
     await db.delete(priceSnapshots).where(sql`${priceSnapshots.productId} IN ${ids} AND ${priceSnapshots.snapshotDate} < '2021-01-01'`);
     await db.delete(priceDrops).where(inArray(priceDrops.productId, ids));
-    for (const [id, sale] of original) await db.update(products).set({ salePrice: sale }).where(eq(products.id, id));
+    for (const [id, o] of original) await db.update(products).set({ salePrice: o.sale, inStock: o.inStock }).where(eq(products.id, id));
     await pool.end();
   });
 
@@ -74,5 +79,18 @@ describe.skipIf(!enabled)("detectPriceDrops (database)", async () => {
     // Day 10: window over → removed even though still cheaper than day 0.
     d = await night(10, { [a]: 30, [b]: 50 });
     expect(d.has(a)).toBe(false);
+  });
+
+  it("drops a listed product as soon as it sells out, and never lists a sold-out one", async () => {
+    const [a, b] = ids;
+    let d = await night(20, { [a]: 42, [b]: 50 });
+    d = await night(21, { [a]: 35, [b]: 50 });
+    expect(d.has(a)).toBe(true);
+
+    // A sells out; B gets cheaper but is sold out too.
+    await db.update(products).set({ inStock: false }).where(inArray(products.id, ids));
+    d = await night(22, { [a]: 35, [b]: 40 });
+    expect(d.size).toBe(0);
+    await db.update(products).set({ inStock: true }).where(inArray(products.id, ids));
   });
 });
