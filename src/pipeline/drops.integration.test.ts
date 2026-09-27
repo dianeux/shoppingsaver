@@ -8,7 +8,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  */
 const enabled = process.env.RUN_DB_TESTS === "1";
 
-describe.skipIf(!enabled)("detectPriceDrops (database)", async () => {
+// Vitest still runs a skipped suite's body to collect it, and this body connects to the
+// database — so without the opt-in the suite isn't defined at all.
+if (!enabled) describe.skip("detectPriceDrops (database) — set RUN_DB_TESTS=1", () => it("requires a database", () => {}));
+else describe("detectPriceDrops (database)", async () => {
   const { db, pool } = await import("@/db/client");
   const { priceDrops, priceSnapshots, products } = await import("@/db/schema");
   const { detectPriceDrops } = await import("./drops");
