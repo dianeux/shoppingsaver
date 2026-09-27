@@ -29,9 +29,13 @@ GitHub Actions (nightly)            Vercel (Next.js 16)
 |---|---|---|---|
 | Muji | ✓ | Shopify `collections/<handle>/products.json` + 商品頁「Material & Care」（只抓新增或變動的商品） | ~10（清單）+ 變動商品數 |
 | Pact | ✓ | 自建平台（非 Shopify）。商品頁用的 `POST /controller/product`，不帶分類時一次回傳整個 apparel / underwear / clearance，含成分、各尺寸庫存與價格 | 3 |
-| Uniqlo、Quince、GU、H&M、Zara | 未接 | — | — |
+| Quince | ✓ | Next.js 網站。女裝服飾列表頁前 30 件在伺服器端渲染，其餘由網站自己的 presentation-layer API 分頁（與頁面捲動時的呼叫相同）；成分只在商品頁，新品或變動時才抓 | ~43（列表）+ 變動商品數 |
+| Uniqlo、GU | ✗ 暫無法接入 | 兩站對所有非瀏覽器程式都不回應（連 robots.txt 都逾時），要取得資料只能偽裝成瀏覽器，違反本專案「標明 User-Agent、不偽裝」原則 | — |
+| H&M、Zara | 未接 | — | — |
 
 Pact 的正價與清倉版本用款號（style code）合併成同一件商品；多件組與套組排除，因為價格基準不同。
+
+Quince 的列表依顏色重複列出同一件商品，以 productId 合併；它的「traditional retail price」是對照其他品牌的價格，不是自己的原價，所以不當作原價。泳裝不在 taxonomy 內而排除；伴娘服歸入擴充節點「正裝與宴會服」。只抓到內裡成分的商品（例如皮衣，皮革不是紡織纖維）標為「成分待補」，不以內裡計分，待 PRD 未解問題 3（皮革如何歸類）決議。
 
 ## 本機開發
 

@@ -19,7 +19,8 @@ export const BRANDS: Record<BrandId, BrandInfo> = {
   gu: { id: "gu", name: "GU", positioning: "快時尚", officialHosts: ["www.gu-global.com"] },
   muji: { id: "muji", name: "Muji", positioning: "無印基本款", officialHosts: ["www.muji.us"] },
   pact: { id: "pact", name: "Pact", positioning: "有機棉基本款", officialHosts: ["wearpact.com"] },
-  quince: { id: "quince", name: "Quince", positioning: "工廠直營精品基本款", officialHosts: ["www.quince.com"] },
+  // Quince's storefront pages its product lists from its own API host.
+  quince: { id: "quince", name: "Quince", positioning: "工廠直營精品基本款", officialHosts: ["www.quince.com", "api-prod-public.onequince.com"] },
 };
 
 export function isBrandId(v: string): v is BrandId {

@@ -125,6 +125,11 @@ export async function brandJson<T>(brand: BrandId, url: string, init?: RequestIn
   return res.json() as Promise<T>;
 }
 
+/** POST a JSON body and parse JSON. */
+export function brandPostJson<T>(brand: BrandId, url: string, body: unknown, headers?: Record<string, string>): Promise<T> {
+  return brandJson<T>(brand, url, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body) });
+}
+
 /** POST a form-encoded body and parse JSON (sites whose storefront API is an XHR form post). */
 export function brandPostForm<T>(brand: BrandId, url: string, form: Record<string, string>): Promise<T> {
   return brandJson<T>(brand, url, {

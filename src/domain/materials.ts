@@ -20,9 +20,10 @@ export const RECYCLED_SYNTHETIC_COEFFICIENT = 0.0;
 export const ELASTANE_EXEMPT_MAX_PCT = 5;
 
 export type Fiber =
-  | "cotton" | "linen" | "hemp" | "ramie" | "kapok" | "silk" | "wool" | "cashmere" | "alpaca" | "mohair" | "yak" | "camel" | "down" | "feather"
+  | "cotton" | "linen" | "hemp" | "ramie" | "kapok" | "silk" | "wool" | "cashmere" | "alpaca" | "vicuna" | "mohair" | "yak" | "camel" | "down" | "feather"
   | "lyocell" | "modal" | "cupro" | "viscose" | "acetate" | "triacetate" | "azlon"
-  | "polyester" | "elasterell" | "nylon" | "acrylic" | "elastane" | "polypropylene" | "polyethylene" | "polyurethane";
+  | "polyester" | "elasterell" | "nylon" | "acrylic" | "elastane" | "polypropylene" | "polyethylene" | "polyurethane" | "metallic"
+  | "other";
 
 export const FIBERS: Record<Fiber, { class: FiberClass; label: string; synonyms: string[] }> = {
   cotton: { class: "natural", label: "棉", synonyms: ["cotton", "organic cotton", "pima cotton", "supima cotton", "supima", "egyptian cotton"] },
@@ -34,6 +35,7 @@ export const FIBERS: Record<Fiber, { class: FiberClass; label: string; synonyms:
   wool: { class: "natural", label: "羊毛", synonyms: ["wool", "merino wool", "merino", "lambswool", "lamb's wool", "lambs wool", "virgin wool", "extra fine merino wool", "shetland wool"] },
   cashmere: { class: "natural", label: "喀什米爾", synonyms: ["cashmere", "mongolian cashmere"] },
   alpaca: { class: "natural", label: "羊駝毛", synonyms: ["alpaca", "baby alpaca"] },
+  vicuna: { class: "natural", label: "小羊駝毛", synonyms: ["vicuña", "vicuna"] },
   mohair: { class: "natural", label: "馬海毛", synonyms: ["mohair"] },
   yak: { class: "natural", label: "犛牛毛", synonyms: ["yak"] },
   camel: { class: "natural", label: "駱駝毛", synonyms: ["camel", "camel hair"] },
@@ -48,7 +50,7 @@ export const FIBERS: Record<Fiber, { class: FiberClass; label: string; synonyms:
   triacetate: { class: "regenerated", label: "三醋酸纖維", synonyms: ["triacetate"] },
   // FTC generic name for regenerated protein fiber (e.g. soy); natural feedstock, chemical process — same tier as rayon.
   azlon: { class: "regenerated", label: "大豆蛋白纖維", synonyms: ["azlon", "soy fiber", "soybean fiber", "soy protein fiber"] },
-  polyester: { class: "synthetic", label: "聚酯", synonyms: ["polyester", "recycled polyester", "pet"] },
+  polyester: { class: "synthetic", label: "聚酯", synonyms: ["polyester", "recycled polyester", "pet", "poly"] },
   // FTC generic name for bicomponent stretch polyester (PET/PTT); not spandex, so no exemption.
   elasterell: { class: "synthetic", label: "彈性聚酯", synonyms: ["elasterell-p", "elasterell p", "elasterell"] },
   nylon: { class: "synthetic", label: "尼龍", synonyms: ["nylon", "polyamide", "recycled nylon", "recycled polyamide"] },
@@ -56,7 +58,10 @@ export const FIBERS: Record<Fiber, { class: FiberClass; label: string; synonyms:
   elastane: { class: "synthetic", label: "彈性纖維", synonyms: ["elastane", "spandex", "lycra", "elastic", "polyurethane elastic"] },
   polypropylene: { class: "synthetic", label: "聚丙烯", synonyms: ["polypropylene"] },
   polyethylene: { class: "synthetic", label: "聚乙烯", synonyms: ["polyethylene"] },
+  metallic: { class: "synthetic", label: "金屬纖維", synonyms: ["metallic", "metallic fiber", "lurex"] },
   polyurethane: { class: "synthetic", label: "聚氨酯", synonyms: ["polyurethane", "pu"] },
+  // FTC lets fibers under 5% be listed as "other fiber(s)"; unknown type, so never scored (see composition.ts).
+  other: { class: "synthetic", label: "其他纖維", synonyms: ["other fiber", "other fibers", "other"] },
 };
 
 const SYNONYM_INDEX: Map<string, Fiber> = new Map(

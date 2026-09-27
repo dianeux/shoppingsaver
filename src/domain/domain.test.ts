@@ -66,6 +66,24 @@ describe("parseComposition", () => {
     const r = parseComposition("Outer Shell, Linings: 100% Nylon / Filling: Down (Minimum 90% Down)");
     expect(r.ok && r.composition.parts).toHaveLength(1);
   });
+  it("leaves unnamed 'other fibers' out of the score", () => {
+    const main = mainOf("55% recycled Italian wool, 35% recycled polyester, 5% recycled nylon, 5% other fibers");
+    expect(materialScore(main)).toBeCloseTo(55 / 95, 3);
+  });
+  it("refuses to score a garment from its lining alone", () => {
+    expect(parseComposition("Lining: 100% polyester")).toEqual({ ok: false, reason: "no_main_part" });
+  });
+  it.each([
+    ["Materials: Skirt: 100% recycled polyester; Built-in shorts: 77% recycled nylon, 23% spandex", ["polyester"]],
+    ["Materials: Top - 57% cotton, 38% modal, 5% spandex. Skirt - 100% organic cotton poplin", ["cotton", "modal", "elastane"]],
+    ["Body: Shell 95% Tencel™, 5% spandex, lining 95% polyester, 5% spandex", ["lyocell", "elastane"]],
+    ["Shell and Lining: 100% recycled polyester Cuffs: 90% nylon, 10% elastane Fill: 90% goose down, 10% goose feathers", ["polyester"]],
+    ["Shell and Lining: 100% recycled nylon ( soft satin finish ); Fill: 90% goose down, 10% goose feathers", ["nylon"]],
+    ["Body: Outer is 100% poly sherpa. Cuff and hem are 90% nylon, 10% spandex. Lining is 50% polyester, 50% cotton", ["polyester"]],
+    ["Body: 57% cashmere, 24% silk, 13% polyamide, 6% metallic", ["cashmere", "silk", "nylon", "metallic"]],
+    ["Body: 100% vicuña", ["vicuna"]],
+    ["Black, Faded Black, Greyed Out: 65% organic cotton, 18% recycled polyester, 10% viscose, 5% lycra, 2% polyester", ["cotton", "polyester", "viscose", "elastane", "polyester"]],
+  ])("real-world labels: %s", (text, fibers) => expect(mainOf(text).map((f) => f.fiber)).toEqual(fibers));
   it("handles name-first order", () => {
     expect(materialScore(mainOf("Linen 55% Cotton 45%"))).toBe(1);
   });
@@ -111,5 +129,10 @@ describe("colorFamily", () => {
     ["Vanilla", "white"],
     ["Flora Spots", "pattern"],
     ["Washed Seagrass", "green"],
+    ["Heather Morel Grey", "gray"],
+    ["Medium Wash", "blue"],
+    ["Whiteout Raw Hem", "white"],
+    ["Creamy Cortado", "beige"],
+    ["Verdant Pine", "green"],
   ])("%s → %s", (raw, fam) => expect(colorFamily(raw)).toBe(fam));
 });

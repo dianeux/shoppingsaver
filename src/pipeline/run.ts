@@ -9,6 +9,7 @@ import { L2_INDEX } from "@/domain/taxonomy";
 import { normalizeSize, sortSizes } from "@/domain/sizes";
 import { mujiAdapter } from "./adapters/muji";
 import { pactAdapter } from "./adapters/pact";
+import { quinceAdapter } from "./adapters/quince";
 import { extractComposition, LlmBudget } from "./extract";
 import { detectPriceDrops } from "./drops";
 import { rescoreAll } from "./rescore";
@@ -21,6 +22,7 @@ import type { BrandAdapter, RawProduct, RawVariant } from "./types";
 const ADAPTERS: Partial<Record<BrandId, BrandAdapter>> = {
   muji: mujiAdapter,
   pact: pactAdapter,
+  quince: quinceAdapter,
 };
 
 /** Price history retention (PRD F13: ≥ 90 days). */
@@ -157,7 +159,8 @@ async function runBrand(adapter: BrandAdapter, budget: LlmBudget): Promise<void>
         salePrice: sale,
         colors,
         colorFamilies: [...new Set(colors.map((c) => c.family).filter((f): f is NonNullable<typeof f> => !!f))],
-        sizeRange: sortSizes(variants.map((v) => normalizeSize(v.size))),
+        // Some listings carry no per-size data (Quince); skip empty sizes rather than store "".
+        sizeRange: sortSizes(variants.map((v) => normalizeSize(v.size)).filter(Boolean)),
         compositionRaw,
         composition: outcome.composition,
         compositionStatus: outcome.status,
