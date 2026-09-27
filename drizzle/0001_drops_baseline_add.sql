@@ -1,0 +1,1 @@
+ALTER TABLE "price_drops" ADD COLUMN "baseline_price" numeric(10, 2);

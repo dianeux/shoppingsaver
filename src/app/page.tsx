@@ -1,14 +1,18 @@
 import Link from "next/link";
 import { SiteNotice } from "@/components/SiteNotice";
 import { BRANDS } from "@/domain/brands";
-import { TAXONOMY } from "@/domain/taxonomy";
-import { coverage, minBrandsPerL2, siteStatus } from "@/lib/catalog";
+import { HOME_L1, TAXONOMY, type L2 } from "@/domain/taxonomy";
+import { coverage, minBrandsPerL2, siteStatus, topValueByL1, type CategoryCover } from "@/lib/catalog";
+import { thumb, usd } from "@/lib/format";
 
 export const revalidate = 3600;
 
 export default async function Home() {
   const [cov, status] = await Promise.all([coverage(), siteStatus()]);
   const byL2 = new Map(cov.map((c) => [c.l2, c]));
+  const isLive = (l2: L2) => (byL2.get(l2)?.brands.length ?? 0) >= minBrandsPerL2;
+  const covers = await topValueByL1(cov.map((c) => c.l2).filter(isLive));
+  const groups = HOME_L1.map((l1) => TAXONOMY.find((g) => g.l1 === l1)!);
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6">
@@ -34,32 +38,17 @@ export default async function Home() {
         </div>
       </section>
 
-      <div className="py-10 grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-        {TAXONOMY.map((g, gi) => {
-          const live = g.children.filter((c) => (byL2.get(c.l2)?.brands.length ?? 0) >= minBrandsPerL2);
-          if (live.length === 0) return null;
-          return (
-            <section key={g.l1} className="rise" style={{ animationDelay: `${160 + gi * 40}ms` }}>
-              <h2 className="font-display text-3xl border-b border-ink pb-1 mb-1">{g.name}</h2>
-              <ul>
-                {live.map((c) => {
-                  const cv = byL2.get(c.l2)!;
-                  return (
-                    <li key={c.l2}>
-                      <Link href={`/c/${c.l2}`} className="group flex items-baseline gap-3 py-2.5 border-b border-dashed border-rule hover:bg-paper/70 -mx-2 px-2 transition-colors">
-                        <span className="text-[17px] group-hover:text-indigo">{c.name}</span>
-                        <span className="ml-auto font-mono text-[11px] text-ink-faint">
-                          {cv.products} 件 · {cv.brands.length} 家
-                        </span>
-                        <span aria-hidden className="text-ink-faint group-hover:translate-x-0.5 transition-transform">→</span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          );
-        })}
+      <div className="py-10 grid gap-x-4 gap-y-10 sm:gap-x-6 grid-cols-2 lg:grid-cols-4">
+        {groups.map((g, gi) => (
+          <CategoryCard
+            key={g.l1}
+            l1={g.l1}
+            name={g.name}
+            cover={covers.get(g.l1)}
+            live={g.children.filter((c) => isLive(c.l2)).map((c) => ({ ...c, ...byL2.get(c.l2)! }))}
+            delay={160 + gi * 50}
+          />
+        ))}
       </div>
 
       {cov.every((c) => c.brands.length < minBrandsPerL2) && (
@@ -77,5 +66,76 @@ export default async function Home() {
         </div>
       </section>
     </div>
+  );
+}
+
+function CategoryCard({
+  l1,
+  name,
+  cover,
+  live,
+  delay,
+}: {
+  l1: string;
+  name: string;
+  cover: CategoryCover | undefined;
+  live: { l2: L2; name: string; products: number; brands: string[] }[];
+  delay: number;
+}) {
+  const img = cover ? thumb(cover.imageUrl, 700) : null;
+  return (
+    <section className="rise flex flex-col" style={{ animationDelay: `${delay}ms` }}>
+      {cover && img ? (
+        <Link
+          href={`/g/${l1}`}
+          className="group relative block aspect-[4/5] overflow-hidden bg-cloth-deep border border-rule/70"
+          aria-label={`看全部 ${name}（性價比最高：${BRANDS[cover.brand].name} ${cover.name}）`}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={img} alt="" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]" />
+          <div className="absolute right-3 top-0 flex flex-col items-center">
+            <span className="block w-px h-3 bg-ink/50" />
+            <div className="stitch bg-paper/95 border border-ink/15 px-2.5 pt-1.5 pb-2 min-w-[52px] text-center shadow-[0_6px_14px_-8px_rgba(28,26,23,.5)] rotate-[2deg] group-hover:rotate-0 transition-transform">
+              <div className="font-mono text-[9px] tracking-[0.18em] text-ink-faint">VALUE</div>
+              <div className="font-display text-[28px] leading-none tabular-nums">{cover.valueScore}</div>
+            </div>
+          </div>
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/75 via-ink/30 to-transparent pt-16 pb-3 px-3 text-paper">
+            <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-paper/75">性價比最高</p>
+            <p className="text-[13px] leading-snug line-clamp-1">
+              {BRANDS[cover.brand].name} · {cover.name}
+            </p>
+            <p className="font-mono text-[12px] text-paper/85">{usd(cover.salePrice)}</p>
+          </div>
+        </Link>
+      ) : (
+        <div className="aspect-[4/5] stitch bg-cloth-deep/60 border border-rule grid place-items-center p-6 text-center">
+          <p className="text-xs text-ink-faint leading-relaxed">還沒有品類達到上線門檻</p>
+        </div>
+      )}
+
+      <h2 className="mt-4 pb-1.5 border-b border-ink">
+        {live.length > 0 ? (
+          <Link href={`/g/${l1}`} className="group flex items-baseline gap-2 font-display text-[28px] sm:text-3xl leading-none hover:text-indigo">
+            {name}
+            <span className="ml-auto font-mono text-[10px] text-ink-faint group-hover:text-indigo whitespace-nowrap">全部 →</span>
+          </Link>
+        ) : (
+          <span className="font-display text-[28px] sm:text-3xl leading-none">{name}</span>
+        )}
+      </h2>
+      <ul>
+        {live.map((c) => (
+          <li key={c.l2}>
+            <Link href={`/c/${c.l2}`} className="group flex items-baseline gap-2 py-2 border-b border-dashed border-rule hover:bg-paper/70 -mx-1.5 px-1.5 transition-colors">
+              <span className="text-[15px] group-hover:text-indigo">{c.name}</span>
+              <span className="ml-auto font-mono text-[10px] text-ink-faint whitespace-nowrap">
+                {c.products} 件<span className="hidden sm:inline"> · {c.brands.length} 家</span>
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

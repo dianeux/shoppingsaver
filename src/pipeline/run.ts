@@ -21,7 +21,7 @@ const ADAPTERS: Partial<Record<BrandId, BrandAdapter>> = {
   muji: mujiAdapter,
 };
 
-/** Keep snapshots long enough for the 30-day median with margin (PRD F13: ≥ 90 days). */
+/** Price history retention (PRD F13: ≥ 90 days). */
 const SNAPSHOT_RETENTION_DAYS = 120;
 
 /**

@@ -98,12 +98,18 @@ export const crawlRuns = pgTable(
   (t) => [index("crawl_runs_brand_idx").on(t.brand, t.startedAt)],
 );
 
-/** Drop-detection result, materialized nightly (PRD F14/F15). */
+/**
+ * Weekly price drops (F14/F15). A product enters when its price falls below the
+ * previous day's, stays up to 7 days from its latest drop, and leaves early if the
+ * price climbs back to the pre-drop (day-0) price.
+ */
 export const priceDrops = pgTable("price_drops", {
   productId: text("product_id").primaryKey().references(() => products.id, { onDelete: "cascade" }),
+  /** Date of the most recent drop; a further drop restarts the 7-day window. */
   detectedOn: date("detected_on", { mode: "string" }).notNull(),
-  /** Median sale price over the 30 days before today — the "real" price the drop is measured against. */
-  median30d: numeric("median_30d", { precision: 10, scale: 2, mode: "number" }).notNull(),
+  /** Price on day 0 — the day before the first drop. Kept across further drops. */
+  baselinePrice: numeric("baseline_price", { precision: 10, scale: 2, mode: "number" }).notNull(),
   currentPrice: numeric("current_price", { precision: 10, scale: 2, mode: "number" }).notNull(),
+  /** Total drop versus the day-0 price. */
   dropPct: real("drop_pct").notNull(),
 });

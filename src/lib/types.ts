@@ -21,5 +21,6 @@ export interface CardProduct {
   dominantFiber: string | null;
   materialScore: number | null;
   pricePercentile: number;
-  drop: { pct: number; median30d: number; detectedOn: string } | null;
+  /** Present while the product is on the weekly drops list. */
+  drop: { pct: number; baselinePrice: number; detectedOn: string } | null;
 }

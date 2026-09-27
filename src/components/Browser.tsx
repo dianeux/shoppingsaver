@@ -53,7 +53,11 @@ function writeWeight(w: number) {
   weightListeners.forEach((cb) => cb());
 }
 
-export function Browser({ products, facetL2 = false }: { products: CardProduct[]; facetL2?: boolean }) {
+/**
+ * @param facetL2 `true` = sub-category as a multi-select filter (brand / deals pages);
+ *   `"switch"` = single-select sub-category switcher with "全部", always visible (L1 group page).
+ */
+export function Browser({ products, facetL2 = false }: { products: CardProduct[]; facetL2?: boolean | "switch" }) {
   const weight = useSyncExternalStore(subscribeWeight, readWeight, () => DEFAULT_MATERIAL_WEIGHT);
   const setWeight = writeWeight;
   const [sort, setSort] = useState<SortKey>("value");
@@ -108,7 +112,10 @@ export function Browser({ products, facetL2 = false }: { products: CardProduct[]
   const range: [number, number] = results.length
     ? [Math.min(...results.map((r) => r.score)), Math.max(...results.map((r) => r.score))]
     : [0, 100];
-  const activeFilters = brands.size + colors.size + fibers.size + l2s.size + (priceMax !== null ? 1 : 0);
+  // The switcher is navigation, not a filter: it isn't counted or cleared with the filters.
+  const l2IsFilter = facetL2 === true;
+  const activeFilters = brands.size + colors.size + fibers.size + (l2IsFilter ? l2s.size : 0) + (priceMax !== null ? 1 : 0);
+  const l2Options = (Object.keys(L2_INDEX) as L2[]).filter((l2) => facets.l2s.has(l2));
   const pos = Math.round(weight * 100);
 
   return (
@@ -149,6 +156,39 @@ export function Browser({ products, facetL2 = false }: { products: CardProduct[]
           <p className="mt-1 text-[11px] leading-relaxed text-ink-faint">往右拉，材質更重要；往左拉，價格更重要。列表即時重排。</p>
         </section>
 
+        {facetL2 === "switch" && l2Options.length > 1 && (
+          <section aria-labelledby="sub-label">
+            <h3 id="sub-label" className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint mb-2">子分類</h3>
+            <div role="radiogroup" aria-labelledby="sub-label" className="flex flex-wrap lg:flex-col gap-1.5 lg:gap-0">
+              {[null, ...l2Options].map((l2) => {
+                const on = l2 === null ? l2s.size === 0 : l2s.has(l2);
+                const count = l2 === null ? products.length : facets.l2s.get(l2)!;
+                return (
+                  <button
+                    key={l2 ?? "all"}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => {
+                      setL2s(l2 === null ? new Set() : new Set([l2]));
+                      setShown(PAGE);
+                    }}
+                    className={`group flex items-baseline gap-2 text-sm px-2.5 py-1.5 lg:px-2 lg:py-2 border lg:border-0 lg:border-b lg:border-dashed transition-colors text-left ${
+                      on
+                        ? "bg-ink text-paper border-ink lg:bg-transparent lg:text-ink lg:border-rule lg:font-medium"
+                        : "bg-paper border-rule lg:bg-transparent hover:border-ink/50 lg:hover:bg-paper/70"
+                    }`}
+                  >
+                    <span aria-hidden className={`hidden lg:inline-block w-1.5 h-1.5 rounded-full self-center ${on ? "bg-indigo" : "bg-transparent"}`} />
+                    <span>{l2 === null ? "全部" : L2_INDEX[l2].name}</span>
+                    <span className={`ml-auto font-mono text-[10px] ${on ? "text-paper/70 lg:text-ink-faint" : "text-ink-faint"}`}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         <button
           type="button"
           onClick={() => setFiltersOpen((v) => !v)}
@@ -160,7 +200,7 @@ export function Browser({ products, facetL2 = false }: { products: CardProduct[]
         </button>
 
         <div className={`${filtersOpen ? "block" : "hidden"} lg:block space-y-7`}>
-          {facetL2 && facets.l2s.size > 1 && (
+          {l2IsFilter && facets.l2s.size > 1 && (
             <Facet title="品類">
               {[...facets.l2s].sort((a, b) => b[1] - a[1]).map(([l2, n]) => (
                 <Chip key={l2} on={l2s.has(l2)} onClick={() => setL2s(toggle(l2s, l2))} count={n}>
@@ -241,7 +281,8 @@ export function Browser({ products, facetL2 = false }: { products: CardProduct[]
               <button
                 type="button"
                 onClick={() => {
-                  setBrands(new Set()); setColors(new Set()); setFibers(new Set()); setL2s(new Set()); setPriceMax(null);
+                  setBrands(new Set()); setColors(new Set()); setFibers(new Set()); setPriceMax(null);
+                  if (l2IsFilter) setL2s(new Set());
                 }}
                 className="ml-3 text-xs underline underline-offset-2 hover:text-ink"
               >

@@ -27,7 +27,8 @@ export default async function CategoryPage({ params }: PageProps<"/c/[l2]">) {
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
       <nav className="font-mono text-[11px] text-ink-faint mb-2">
-        <Link href="/" className="hover:text-ink">品類</Link> / {info.l1Name}
+        <Link href="/" className="hover:text-ink">品類</Link> /{" "}
+        <Link href={`/g/${info.l1}`} className="hover:text-ink">{info.l1Name}</Link>
       </nav>
       <div className="flex flex-wrap items-end gap-x-6 gap-y-3 mb-8">
         <h1 className="font-display text-5xl sm:text-6xl leading-none">{info.name}</h1>

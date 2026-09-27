@@ -2,40 +2,63 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 
 /**
- * Price-drop detection (PRD F14). A product counts as dropped when today's sale
- * price is at least DROP_MIN below the median of the previous 30 days.
- * Comparing to a 30-day median rather than yesterday keeps permanently
- * discounted items out: their median *is* the sale price.
+ * Weekly price drops (F14). Rules:
+ *  - enter: today's sale price is below the previous day's snapshot; that
+ *    previous price becomes the day-0 (baseline) price
+ *  - a further drop while listed restarts the window but keeps the day-0 price
+ *  - leave: as soon as the price is back at (or above) the day-0 price, or once
+ *    the latest drop is DROP_WINDOW_DAYS old (drop day = day 1, listed days 1–7)
  */
-export const DROP_MIN = 0.1;
-/** Need this many prior daily snapshots before a median means anything. */
-export const MIN_HISTORY_DAYS = 7;
+export const DROP_WINDOW_DAYS = 7;
+
+/**
+ * "Previous day" = the latest snapshot before today, looking back this far —
+ * so one missed nightly run doesn't hide or fake a drop.
+ */
+const PREVIOUS_LOOKBACK_DAYS = 3;
 
 export async function detectPriceDrops(today: string) {
   await db.transaction(async (tx) => {
+    // Products whose price fell versus their previous snapshot.
     await tx.execute(sql`
-      CREATE TEMP TABLE drop_candidates ON COMMIT DROP AS
-      WITH hist AS (
-        SELECT s.product_id,
-               percentile_cont(0.5) WITHIN GROUP (ORDER BY s.sale_price) AS median,
-               count(*) AS days
-        FROM price_snapshots s
-        WHERE s.snapshot_date >= ${today}::date - 30 AND s.snapshot_date < ${today}::date
-        GROUP BY s.product_id
-      )
-      SELECT p.id AS product_id, h.median, p.sale_price AS current_price,
-             1 - p.sale_price / h.median AS drop_pct
+      CREATE TEMP TABLE dropped_today ON COMMIT DROP AS
+      SELECT DISTINCT ON (s.product_id) p.id AS product_id, s.sale_price AS previous_price, p.sale_price AS current_price
       FROM products p
-      JOIN hist h ON h.product_id = p.id
-      WHERE p.active AND h.days >= ${MIN_HISTORY_DAYS}::int AND p.sale_price <= h.median * (1 - ${DROP_MIN}::numeric)
+      JOIN price_snapshots s ON s.product_id = p.id
+      WHERE p.active
+        AND s.snapshot_date < ${today}::date
+        AND s.snapshot_date >= ${today}::date - ${PREVIOUS_LOOKBACK_DAYS}::int
+      ORDER BY s.product_id, s.snapshot_date DESC
     `);
-    await tx.execute(sql`DELETE FROM price_drops WHERE product_id NOT IN (SELECT product_id FROM drop_candidates)`);
-    // Keep the original detection date while the drop persists; that's what "this week" filters on.
+    await tx.execute(sql`DELETE FROM dropped_today WHERE current_price >= previous_price`);
+
+    // New drops start a 7-day window at today; further drops restart it but keep day 0.
     await tx.execute(sql`
-      INSERT INTO price_drops (product_id, detected_on, median_30d, current_price, drop_pct)
-      SELECT product_id, ${today}::date, median, current_price, drop_pct FROM drop_candidates
+      INSERT INTO price_drops (product_id, detected_on, baseline_price, current_price, drop_pct)
+      SELECT product_id, ${today}::date, previous_price, current_price, 1 - current_price / previous_price
+      FROM dropped_today
       ON CONFLICT (product_id) DO UPDATE
-        SET median_30d = EXCLUDED.median_30d, current_price = EXCLUDED.current_price, drop_pct = EXCLUDED.drop_pct
+        SET detected_on = EXCLUDED.detected_on,
+            current_price = EXCLUDED.current_price,
+            drop_pct = 1 - EXCLUDED.current_price / price_drops.baseline_price
+    `);
+
+    // Everyone else still listed: refresh today's price.
+    await tx.execute(sql`
+      UPDATE price_drops d
+      SET current_price = p.sale_price, drop_pct = 1 - p.sale_price / d.baseline_price
+      FROM products p
+      WHERE p.id = d.product_id AND d.product_id NOT IN (SELECT product_id FROM dropped_today)
+    `);
+
+    // Leave: back at the day-0 price, window over, or product gone.
+    await tx.execute(sql`
+      DELETE FROM price_drops d
+      USING products p
+      WHERE p.id = d.product_id
+        AND (d.current_price >= d.baseline_price
+             OR ${today}::date - d.detected_on >= ${DROP_WINDOW_DAYS}::int
+             OR NOT p.active)
     `);
   });
 }

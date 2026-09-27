@@ -4,20 +4,13 @@ import Link from "next/link";
 import { useState } from "react";
 import { BRANDS } from "@/domain/brands";
 import { COLOR_FAMILY_LABEL } from "@/domain/colors";
+import { thumb, usd } from "@/lib/format";
 import type { CardProduct } from "@/lib/types";
 
 const STATUS_COPY = {
   extraction_failed: "成分待補",
   not_disclosed: "品牌未提供成分",
 } as const;
-
-export function thumb(url: string | null, width = 600) {
-  if (!url) return null;
-  if (url.includes("cdn.shopify.com")) return `${url}${url.includes("?") ? "&" : "?"}width=${width}`;
-  return url;
-}
-
-export const usd = (n: number) => `$${n % 1 === 0 ? n.toFixed(0) : n.toFixed(2)}`;
 
 export interface ScoredProduct extends CardProduct {
   score: number;
@@ -98,9 +91,14 @@ export function ProductCard({
         </a>
 
         <div className="flex items-baseline gap-2">
-          <span className={`font-mono text-[15px] ${onSale ? "text-madder" : ""}`}>{usd(p.salePrice)}</span>
-          {onSale && <span className="font-mono text-xs text-ink-faint line-through">{usd(p.listPrice)}</span>}
-          {p.drop && <span className="font-mono text-[11px] text-ink-faint">30 天中位 {usd(p.drop.median30d)}</span>}
+          <span className={`font-mono text-[15px] ${onSale || p.drop ? "text-madder" : ""}`}>{usd(p.salePrice)}</span>
+          {p.drop ? (
+            <span className="font-mono text-xs text-ink-faint">
+              降價前 <span className="line-through">{usd(p.drop.baselinePrice)}</span>
+            </span>
+          ) : (
+            onSale && <span className="font-mono text-xs text-ink-faint line-through">{usd(p.listPrice)}</span>
+          )}
         </div>
 
         {/* Composition, printed like a care label */}

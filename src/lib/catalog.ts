@@ -1,9 +1,10 @@
 import "server-only";
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { crawlRuns, priceDrops, products } from "@/db/schema";
 import { BRANDS, type BrandId } from "@/domain/brands";
 import { formatComposition } from "@/domain/composition";
+import { DROP_WINDOW_DAYS } from "@/pipeline/drops";
 import { MIN_BRANDS_PER_L2, TAXONOMY, type L2 } from "@/domain/taxonomy";
 import type { CardProduct } from "./types";
 
@@ -31,7 +32,7 @@ const cardColumns = {
   materialScore: products.materialScore,
   pricePercentile: products.pricePercentile,
   dropPct: priceDrops.dropPct,
-  median30d: priceDrops.median30d,
+  dropBaseline: priceDrops.baselinePrice,
   dropDetectedOn: priceDrops.detectedOn,
 };
 
@@ -56,7 +57,7 @@ function toCard(r: Row): CardProduct {
     dominantFiber: (r.dominantFiber as string | null) ?? null,
     materialScore: (r.materialScore as number | null) ?? null,
     pricePercentile: (r.pricePercentile as number | null) ?? 0.5,
-    drop: r.dropPct != null ? { pct: r.dropPct as number, median30d: r.median30d as number, detectedOn: r.dropDetectedOn as string } : null,
+    drop: r.dropPct != null ? { pct: r.dropPct as number, baselinePrice: r.dropBaseline as number, detectedOn: r.dropDetectedOn as string } : null,
   };
 }
 
@@ -66,6 +67,17 @@ export async function productsForL2(l2: L2): Promise<CardProduct[]> {
     .from(products)
     .leftJoin(priceDrops, eq(priceDrops.productId, products.id))
     .where(and(eq(products.categoryL2, l2), eq(products.active, true)));
+  return rows.map(toCard);
+}
+
+/** Every product in an L1 group, limited to L2 pages that pass the coverage threshold. */
+export async function productsForL1(l1: string, liveL2s: L2[]): Promise<CardProduct[]> {
+  if (liveL2s.length === 0) return [];
+  const rows = await db
+    .select(cardColumns)
+    .from(products)
+    .leftJoin(priceDrops, eq(priceDrops.productId, products.id))
+    .where(and(eq(products.categoryL1, l1), eq(products.active, true), inArray(products.categoryL2, liveL2s)));
   return rows.map(toCard);
 }
 
@@ -79,7 +91,8 @@ export async function productsForBrand(brand: BrandId): Promise<CardProduct[]> {
 }
 
 export async function weeklyDrops(today = new Date()): Promise<CardProduct[]> {
-  const since = new Date(today.getTime() - 7 * 864e5).toISOString().slice(0, 10);
+  // Drop day counts as day 1, so the window starts DROP_WINDOW_DAYS − 1 days back.
+  const since = new Date(today.getTime() - (DROP_WINDOW_DAYS - 1) * 864e5).toISOString().slice(0, 10);
   const rows = await db
     .select(cardColumns)
     .from(priceDrops)
@@ -112,6 +125,43 @@ export async function coverage(): Promise<L2Coverage[]> {
     byL2.set(r.l2, c);
   }
   return TAXONOMY.flatMap((g) => g.children.map((c) => byL2.get(c.l2) ?? { l2: c.l2, products: 0, brands: [], skuByBrand: {} }));
+}
+
+export interface CategoryCover {
+  l1: string;
+  l2: L2;
+  brand: BrandId;
+  name: string;
+  imageUrl: string;
+  valueScore: number;
+  salePrice: number;
+}
+
+/**
+ * Home-page cover image per L1: the highest default-weight value score among
+ * live L2 pages (ties → cheaper). Only products with an image qualify.
+ */
+export async function topValueByL1(liveL2s: L2[]): Promise<Map<string, CategoryCover>> {
+  if (liveL2s.length === 0) return new Map();
+  const rows = await db.execute<{
+    category_l1: string; category_l2: string; brand: string; product_name: string;
+    image_url: string; value_score: number; sale_price: string;
+  }>(sql`
+    SELECT DISTINCT ON (category_l1) category_l1, category_l2, brand, product_name, image_url, value_score, sale_price
+    FROM ${products}
+    WHERE active AND image_url IS NOT NULL AND value_score IS NOT NULL
+      AND category_l2 IN (${sql.join(liveL2s.map((l) => sql`${l}`), sql`, `)})
+    ORDER BY category_l1, value_score DESC, sale_price ASC
+  `);
+  return new Map(
+    rows.rows.map((r) => [
+      r.category_l1,
+      {
+        l1: r.category_l1, l2: r.category_l2 as L2, brand: r.brand as BrandId, name: r.product_name,
+        imageUrl: r.image_url, valueScore: r.value_score, salePrice: Number(r.sale_price),
+      },
+    ]),
+  );
 }
 
 export interface SiteStatus {

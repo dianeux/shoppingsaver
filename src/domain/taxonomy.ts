@@ -61,7 +61,7 @@ export const TAXONOMY = [
   },
   {
     l1: "activewear",
-    name: "Activewear",
+    name: "Sports",
     children: [
       { l2: "active-tops", name: "運動上衣" },
       { l2: "active-bottoms", name: "運動下著" },
@@ -90,6 +90,13 @@ export type L2 = (typeof TAXONOMY)[number]["children"][number]["l2"];
 export const L2_INDEX: Record<L2, { l1: L1; name: string; l1Name: string }> = Object.fromEntries(
   TAXONOMY.flatMap((g) => g.children.map((c) => [c.l2, { l1: g.l1, name: c.name, l1Name: g.name }])),
 ) as Record<L2, { l1: L1; name: string; l1Name: string }>;
+
+/** L1 groups shown on the home page, in order. The "extended" group has no card of its own. */
+export const HOME_L1: L1[] = ["tops", "outerwear", "bottoms", "dresses", "innerwear", "loungewear", "activewear", "accessories"];
+
+export function isHomeL1(v: string): v is L1 {
+  return (HOME_L1 as string[]).includes(v);
+}
 
 export function isL2(v: string): v is L2 {
   return v in L2_INDEX;
