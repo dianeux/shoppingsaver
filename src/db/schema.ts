@@ -36,6 +36,8 @@ export const products = pgTable(
     colors: jsonb("colors").$type<ProductColor[]>().notNull(),
     colorFamilies: text("color_families").array().notNull().default(sql`'{}'::text[]`),
     sizeRange: text("size_range").array().notNull().default(sql`'{}'::text[]`),
+    /** Brand description (plain text), used by search. Empty for brands whose listing has none. */
+    description: text("description").notNull().default(""),
     compositionRaw: text("composition_raw"),
     composition: jsonb("composition").$type<Composition>(),
     compositionStatus: text("composition_status").$type<CompositionStatus>().notNull(),

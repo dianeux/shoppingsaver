@@ -9,9 +9,10 @@ import { L2_INDEX, type L2 } from "@/domain/taxonomy";
 import type { CardProduct } from "@/lib/types";
 import { ProductCard, type ScoredProduct } from "./ProductCard";
 
-type SortKey = "value" | "price-asc" | "price-desc" | "material";
+type SortKey = "relevance" | "value" | "price-asc" | "price-desc" | "material";
 
 const SORTS: { key: SortKey; label: string }[] = [
+  { key: "relevance", label: "相關度" },
   { key: "value", label: "性價比" },
   { key: "price-asc", label: "價格低→高" },
   { key: "price-desc", label: "價格高→低" },
@@ -58,9 +59,11 @@ function writeWeight(w: number) {
  *   `"switch"` = single-select sub-category switcher with "全部", always visible (L1 group page).
  */
 export function Browser({ products, facetL2 = false }: { products: CardProduct[]; facetL2?: boolean | "switch" }) {
+  // Search results carry a relevance score; everywhere else the relevance sort is hidden.
+  const hasRelevance = products.some((p) => p.relevance !== undefined);
   const weight = useSyncExternalStore(subscribeWeight, readWeight, () => DEFAULT_MATERIAL_WEIGHT);
   const setWeight = writeWeight;
-  const [sort, setSort] = useState<SortKey>("value");
+  const [sort, setSort] = useState<SortKey>(hasRelevance ? "relevance" : "value");
   const [brands, setBrands] = useState<Set<BrandId>>(new Set());
   const [colors, setColors] = useState<Set<ColorFamily>>(new Set());
   const [fibers, setFibers] = useState<Set<string>>(new Set());
@@ -101,6 +104,7 @@ export function Browser({ products, facetL2 = false }: { products: CardProduct[]
     });
     const byPrice = (a: ScoredProduct, b: ScoredProduct) => a.salePrice - b.salePrice;
     const cmp: Record<SortKey, (a: ScoredProduct, b: ScoredProduct) => number> = {
+      relevance: (a, b) => (b.relevance ?? 0) - (a.relevance ?? 0) || b.score - a.score,
       value: (a, b) => b.score - a.score || byPrice(a, b),
       "price-asc": byPrice,
       "price-desc": (a, b) => -byPrice(a, b),
@@ -291,7 +295,7 @@ export function Browser({ products, facetL2 = false }: { products: CardProduct[]
             )}
           </p>
           <div role="radiogroup" aria-label="排序" className="ml-auto flex gap-1 text-xs">
-            {SORTS.map((s) => (
+            {SORTS.filter((s) => s.key !== "relevance" || hasRelevance).map((s) => (
               <button
                 key={s.key}
                 role="radio"

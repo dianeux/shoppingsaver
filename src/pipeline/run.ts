@@ -163,6 +163,7 @@ async function runBrand(adapter: BrandAdapter, budget: LlmBudget): Promise<void>
         colorFamilies: [...new Set(colors.map((c) => c.family).filter((f): f is NonNullable<typeof f> => !!f))],
         // Some listings carry no per-size data (Quince); skip empty sizes rather than store "".
         sizeRange: sortSizes(variants.map((v) => normalizeSize(v.size)).filter(Boolean)),
+        description: raw.description,
         compositionRaw,
         composition: outcome.composition,
         compositionStatus: outcome.status,

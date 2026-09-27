@@ -27,4 +27,6 @@ export interface CardProduct {
   pricePercentile: number;
   /** Present while the product is on the weekly drops list. */
   drop: { pct: number; baselinePrice: number; detectedOn: string } | null;
+  /** Search relevance (search results only). */
+  relevance?: number;
 }

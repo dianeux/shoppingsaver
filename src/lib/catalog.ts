@@ -1,9 +1,10 @@
 import "server-only";
-import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db/client";
 import { crawlRuns, priceDrops, products } from "@/db/schema";
 import { BRANDS, type BrandId } from "@/domain/brands";
-import { formatComposition } from "@/domain/composition";
+import { formatComposition, type Composition } from "@/domain/composition";
+import { scoreProduct, type ParsedQuery } from "@/domain/search";
 import { DROP_WINDOW_DAYS } from "@/pipeline/drops";
 import { MIN_BRANDS_PER_L2, TAXONOMY, type L2 } from "@/domain/taxonomy";
 import type { CardProduct } from "./types";
@@ -84,6 +85,58 @@ export async function productsForL1(l1: string, liveL2s: L2[]): Promise<CardProd
     .leftJoin(priceDrops, eq(priceDrops.productId, products.id))
     .where(and(eq(products.categoryL1, l1), eq(products.active, true), eq(products.inStock, true), inArray(products.categoryL2, liveL2s)));
   return rows.map(toCard);
+}
+
+const SEARCH_LIMIT = 240;
+
+/**
+ * Lexicon search over listed, in-stock products. Category, brand and price are
+ * narrowed in SQL; the rest (colors, fiber shares, style phrases) is scored per product.
+ */
+export async function searchProducts(q: ParsedQuery): Promise<{ items: CardProduct[]; total: number }> {
+  const where: SQL[] = [eq(products.active, true), eq(products.inStock, true)];
+  const l2s = [...new Set(q.categories.flatMap((c) => c.l2))];
+  if (l2s.length) where.push(inArray(products.categoryL2, l2s));
+  if (q.brands.length) where.push(inArray(products.brand, q.brands.map((b) => b.brand)));
+  if (q.priceMax) where.push(lte(products.salePrice, q.priceMax.value));
+
+  const rows = await db
+    .select({ ...cardColumns, description: products.description })
+    .from(products)
+    .leftJoin(priceDrops, eq(priceDrops.productId, products.id))
+    .where(and(...where));
+
+  const scored: CardProduct[] = [];
+  for (const r of rows) {
+    const main = (r.composition as Composition | null)?.main ?? [];
+    const relevance = scoreProduct(
+      {
+        brand: r.brand as BrandId, l2: r.l2 as L2, name: r.name, description: r.description,
+        colorFamilies: r.colorFamilies as CardProduct["colorFamilies"], salePrice: r.salePrice, fibers: main,
+      },
+      q,
+    );
+    if (relevance !== null) scored.push({ ...toCard(r), relevance });
+  }
+  scored.sort((a, b) => b.relevance! - a.relevance!);
+  return { items: scored.slice(0, SEARCH_LIMIT), total: scored.length };
+}
+
+export type Availability = "available" | "sold_out" | "gone";
+export type FavoriteProduct = CardProduct & { availability: Availability };
+
+/**
+ * Favorites by id, whatever their state: sold-out and delisted items come back
+ * too so the favorites page can say so instead of silently dropping them.
+ */
+export async function productsByIds(ids: string[]): Promise<FavoriteProduct[]> {
+  if (ids.length === 0) return [];
+  const rows = await db
+    .select({ ...cardColumns, active: products.active, inStock: products.inStock })
+    .from(products)
+    .leftJoin(priceDrops, eq(priceDrops.productId, products.id))
+    .where(inArray(products.id, ids));
+  return rows.map((r) => ({ ...toCard(r), availability: !r.active ? "gone" : !r.inStock ? "sold_out" : "available" }));
 }
 
 export async function productsForBrand(brand: BrandId): Promise<CardProduct[]> {

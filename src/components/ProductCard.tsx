@@ -6,6 +6,7 @@ import { BRANDS } from "@/domain/brands";
 import { COLOR_FAMILY_LABEL } from "@/domain/colors";
 import { thumb, usd } from "@/lib/format";
 import type { CardProduct } from "@/lib/types";
+import { FavoriteButton } from "./FavoriteButton";
 
 const STATUS_COPY = {
   extraction_failed: "成分待補",
@@ -43,28 +44,32 @@ export function ProductCard({
       className="rise group relative flex flex-col bg-paper border border-rule/70 hover:border-ink/40 transition-colors"
       style={{ animationDelay: `${Math.min(index, 16) * 30}ms` }}
     >
-      <a href={p.url} target="_blank" rel="noopener noreferrer" className="relative block aspect-[4/5] overflow-hidden bg-cloth-deep">
-        {img ? (
-          // Brand CDNs already resize; next/image would re-host every brand image.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={img} alt={p.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
-        ) : (
-          <div className="h-full w-full grid place-items-center text-ink-faint text-xs">無圖片</div>
-        )}
-        {p.drop && (
-          <span className="absolute left-0 top-3 bg-madder text-paper font-mono text-[11px] px-2 py-1 tracking-wide">
-            −{Math.round(p.drop.pct * 100)}%
-          </span>
-        )}
-        {/* Hang tag */}
-        <div className="absolute right-3 top-0 flex flex-col items-center">
-          <span className="block w-px h-3 bg-ink/50" />
-          <div className="stitch bg-paper/95 backdrop-blur-sm border border-ink/15 px-2.5 pt-1.5 pb-2 min-w-[52px] text-center shadow-[0_6px_14px_-8px_rgba(28,26,23,.5)] rotate-[2deg] group-hover:rotate-0 transition-transform">
-            <div className="font-mono text-[9px] tracking-[0.18em] text-ink-faint">VALUE</div>
-            <div className="font-display text-[28px] leading-none tabular-nums">{p.score}</div>
+      <div className="relative">
+        <a href={p.url} target="_blank" rel="noopener noreferrer" className="relative block aspect-[4/5] overflow-hidden bg-cloth-deep">
+          {img ? (
+            // Brand CDNs already resize; next/image would re-host every brand image.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={img} alt={p.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+          ) : (
+            <div className="h-full w-full grid place-items-center text-ink-faint text-xs">無圖片</div>
+          )}
+          {p.drop && (
+            <span className="absolute left-0 top-3 bg-madder text-paper font-mono text-[11px] px-2 py-1 tracking-wide">
+              −{Math.round(p.drop.pct * 100)}%
+            </span>
+          )}
+          {/* Hang tag */}
+          <div className="absolute right-3 top-0 flex flex-col items-center">
+            <span className="block w-px h-3 bg-ink/50" />
+            <div className="stitch bg-paper/95 backdrop-blur-sm border border-ink/15 px-2.5 pt-1.5 pb-2 min-w-[52px] text-center shadow-[0_6px_14px_-8px_rgba(28,26,23,.5)] rotate-[2deg] group-hover:rotate-0 transition-transform">
+              <div className="font-mono text-[9px] tracking-[0.18em] text-ink-faint">VALUE</div>
+              <div className="font-display text-[28px] leading-none tabular-nums">{p.score}</div>
+            </div>
           </div>
-        </div>
-      </a>
+        </a>
+        {/* Sibling of the link, not inside it: a button can't nest in an anchor. */}
+        <FavoriteButton id={p.id} name={p.name} className="absolute left-2.5 bottom-2.5" />
+      </div>
 
       <div className="flex flex-col gap-2 p-3 flex-1">
         <div className="flex items-center justify-between gap-2">
