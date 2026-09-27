@@ -83,7 +83,20 @@ describe("parseComposition", () => {
     ["Body: 57% cashmere, 24% silk, 13% polyamide, 6% metallic", ["cashmere", "silk", "nylon", "metallic"]],
     ["Body: 100% vicuña", ["vicuna"]],
     ["Black, Faded Black, Greyed Out: 65% organic cotton, 18% recycled polyester, 10% viscose, 5% lycra, 2% polyester", ["cotton", "polyester", "viscose", "elastane", "polyester"]],
+    ["Black, Faded Black, Greyed Out: 65% cotton, 35% polyester / Deep Rinse, Seaside Blue, Midnight Blue, Frosted Blue: 94% organic cotton, 5% elasterell-p, 1% lycra", ["cotton", "polyester"]],
   ])("real-world labels: %s", (text, fibers) => expect(mainOf(text).map((f) => f.fiber)).toEqual(fibers));
+  it.each([
+    ["Body: 100% top grain sheep leather / Lining: 100% polyester", "leather", 1],
+    ["100% lambskin suede", "leather", 1],
+    ["Shell: 100% shearling", "leather", 1],
+    ["Shell: 100% faux leather / Lining: 100% polyester", "faux_leather", 0],
+    ["100% vegan suede", "faux_leather", 0],
+    ["100% polyurethane leather", "faux_leather", 0],
+  ])("leather: %s → %s (%d)", (text, fiber, score) => {
+    const main = mainOf(text);
+    expect(main[0].fiber).toBe(fiber);
+    expect(materialScore(main)).toBe(score);
+  });
   it("handles name-first order", () => {
     expect(materialScore(mainOf("Linen 55% Cotton 45%"))).toBe(1);
   });

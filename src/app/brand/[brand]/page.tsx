@@ -3,13 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Browser } from "@/components/Browser";
 import { SiteNotice } from "@/components/SiteNotice";
-import { BRAND_IDS, BRANDS, isBrandId } from "@/domain/brands";
+import { ACTIVE_BRAND_IDS, BRANDS, isBrandId } from "@/domain/brands";
 import { productsForBrand, siteStatus } from "@/lib/catalog";
 
 export const revalidate = 3600;
 
 export function generateStaticParams() {
-  return BRAND_IDS.map((brand) => ({ brand }));
+  return ACTIVE_BRAND_IDS.map((brand) => ({ brand }));
 }
 
 export async function generateMetadata({ params }: PageProps<"/brand/[brand]">): Promise<Metadata> {

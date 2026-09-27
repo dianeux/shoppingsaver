@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SiteNotice } from "@/components/SiteNotice";
-import { BRANDS } from "@/domain/brands";
+import { ACTIVE_BRAND_IDS, BRANDS } from "@/domain/brands";
 import { HOME_L1, TAXONOMY, type L2 } from "@/domain/taxonomy";
 import { coverage, minBrandsPerL2, siteStatus, topValueByL1, type CategoryCover } from "@/lib/catalog";
 import { thumb, usd } from "@/lib/format";
@@ -19,7 +19,7 @@ export default async function Home() {
       <section className="pt-12 pb-10 sm:pt-20 sm:pb-14 grid lg:grid-cols-[1.5fr_1fr] gap-10 items-end border-b border-rule">
         <div className="rise">
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-faint mb-4">
-            H&amp;M · Zara · Uniqlo · GU · Muji · Pact · Quince
+            {ACTIVE_BRAND_IDS.map((b) => BRANDS[b].name).join(" · ")}
           </p>
           <h1 className="font-display text-[clamp(34px,6vw,68px)] leading-[1.02] tracking-tight [word-break:keep-all]">
             不是找最低價，
@@ -30,7 +30,7 @@ export default async function Home() {
           </h1>
         </div>
         <div className="rise space-y-4 text-[15px] leading-relaxed text-ink-soft" style={{ animationDelay: "120ms" }}>
-          <p>七家基本款品牌的女裝，材質、顏色、尺寸寫法統一，放在同一頁比較。</p>
+          <p>{ACTIVE_BRAND_IDS.length} 個基本款品牌的女裝，材質、顏色、尺寸寫法統一，放在同一頁比較。</p>
           <p>
             預設依<strong className="text-ink font-medium">性價比</strong>排序：材質分（天然 1.0、再生纖維素 0.5、合成 0）和同品類內的價格百分位各佔一半。權重可以自己調。
           </p>

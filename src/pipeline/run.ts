@@ -7,7 +7,9 @@ import { dominantFiber, materialScore } from "@/domain/composition";
 import { isBrandId, type BrandId } from "@/domain/brands";
 import { L2_INDEX } from "@/domain/taxonomy";
 import { normalizeSize, sortSizes } from "@/domain/sizes";
+import { everlaneAdapter } from "./adapters/everlane";
 import { mujiAdapter } from "./adapters/muji";
+import { oldNavyAdapter } from "./adapters/oldnavy";
 import { pactAdapter } from "./adapters/pact";
 import { quinceAdapter } from "./adapters/quince";
 import { extractComposition, LlmBudget } from "./extract";
@@ -23,6 +25,8 @@ const ADAPTERS: Partial<Record<BrandId, BrandAdapter>> = {
   muji: mujiAdapter,
   pact: pactAdapter,
   quince: quinceAdapter,
+  everlane: everlaneAdapter,
+  oldnavy: oldNavyAdapter,
 };
 
 /** Price history retention (PRD F13: ≥ 90 days). */

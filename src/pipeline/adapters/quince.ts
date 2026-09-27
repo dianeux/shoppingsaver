@@ -161,7 +161,7 @@ export function toRawProduct({ item, colors }: QuinceGroup): RawProduct {
   };
 }
 
-const FIBER = "(?:cotton|linen|flax|hemp|silk|wool|merino|cashmere|alpaca|mohair|yak|camel|lyocell|tencel|modal|cupro|viscose|rayon|ecovero|acetate|polyester|nylon|polyamide|acrylic|elastane|elasterell|spandex|lycra|other fibers?)";
+const FIBER = "(?:cotton|linen|flax|hemp|silk|wool|merino|cashmere|alpaca|mohair|yak|camel|lyocell|tencel|modal|cupro|viscose|rayon|ecovero|acetate|polyester|nylon|polyamide|acrylic|elastane|elasterell|spandex|lycra|other fibers?|leather|suede|nubuck|shearling|sheepskin|lambskin|calfskin|cowhide|goatskin)";
 /** A percentage followed within three words by a fiber name — "73% organic cotton", not "50% lower emissions". */
 const FIBER_SHARE = new RegExp(`\\d{1,3}\\s?%\\s*(?:[\\w™®'-]+\\s+){0,3}?${FIBER}\\b`, "i");
 

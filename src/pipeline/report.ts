@@ -2,7 +2,7 @@ import "dotenv/config";
 import { desc, eq, sql } from "drizzle-orm";
 import { db, pool } from "@/db/client";
 import { crawlRuns, products } from "@/db/schema";
-import { BRAND_IDS, BRANDS } from "@/domain/brands";
+import { ACTIVE_BRAND_IDS as BRAND_IDS, BRANDS } from "@/domain/brands";
 import { MIN_BRANDS_PER_L2, TAXONOMY } from "@/domain/taxonomy";
 
 /**

@@ -20,9 +20,9 @@ export const RECYCLED_SYNTHETIC_COEFFICIENT = 0.0;
 export const ELASTANE_EXEMPT_MAX_PCT = 5;
 
 export type Fiber =
-  | "cotton" | "linen" | "hemp" | "ramie" | "kapok" | "silk" | "wool" | "cashmere" | "alpaca" | "vicuna" | "mohair" | "yak" | "camel" | "down" | "feather"
+  | "cotton" | "linen" | "hemp" | "ramie" | "kapok" | "silk" | "wool" | "cashmere" | "alpaca" | "vicuna" | "mohair" | "yak" | "camel" | "down" | "feather" | "leather"
   | "lyocell" | "modal" | "cupro" | "viscose" | "acetate" | "triacetate" | "azlon"
-  | "polyester" | "elasterell" | "nylon" | "acrylic" | "elastane" | "polypropylene" | "polyethylene" | "polyurethane" | "metallic"
+  | "polyester" | "elasterell" | "nylon" | "acrylic" | "elastane" | "polypropylene" | "polyethylene" | "polyurethane" | "metallic" | "faux_leather"
   | "other";
 
 export const FIBERS: Record<Fiber, { class: FiberClass; label: string; synonyms: string[] }> = {
@@ -39,6 +39,12 @@ export const FIBERS: Record<Fiber, { class: FiberClass; label: string; synonyms:
   mohair: { class: "natural", label: "馬海毛", synonyms: ["mohair"] },
   yak: { class: "natural", label: "犛牛毛", synonyms: ["yak"] },
   camel: { class: "natural", label: "駱駝毛", synonyms: ["camel", "camel hair"] },
+  // Not a textile fiber, but scored as natural by product decision (PRD open question 3).
+  leather: {
+    class: "natural",
+    label: "天然皮革",
+    synonyms: ["leather", "genuine leather", "top grain leather", "full grain leather", "suede", "nubuck", "shearling", "sheepskin", "lambskin", "calfskin", "cowhide", "goatskin", "sheep leather", "lamb leather", "cow leather", "goat leather", "sheep suede", "goat suede"],
+  },
   // Fill materials; they normally sit in a "Filling" part, which isn't scored.
   down: { class: "natural", label: "羽絨", synonyms: ["down", "duck down", "goose down", "white duck down"] },
   feather: { class: "natural", label: "羽毛", synonyms: ["feather", "feathers", "waterfowl feathers", "duck feathers", "goose feathers"] },
@@ -58,6 +64,11 @@ export const FIBERS: Record<Fiber, { class: FiberClass; label: string; synonyms:
   elastane: { class: "synthetic", label: "彈性纖維", synonyms: ["elastane", "spandex", "lycra", "elastic", "polyurethane elastic"] },
   polypropylene: { class: "synthetic", label: "聚丙烯", synonyms: ["polypropylene"] },
   polyethylene: { class: "synthetic", label: "聚乙烯", synonyms: ["polyethylene"] },
+  faux_leather: {
+    class: "synthetic",
+    label: "人造皮革",
+    synonyms: ["faux leather", "vegan leather", "pu leather", "polyurethane leather", "synthetic leather", "imitation leather", "leatherette", "pleather", "faux suede", "vegan suede", "faux shearling"],
+  },
   metallic: { class: "synthetic", label: "金屬纖維", synonyms: ["metallic", "metallic fiber", "lurex"] },
   polyurethane: { class: "synthetic", label: "聚氨酯", synonyms: ["polyurethane", "pu"] },
   // FTC lets fibers under 5% be listed as "other fiber(s)"; unknown type, so never scored (see composition.ts).
@@ -77,7 +88,16 @@ export interface ResolvedFiber {
 }
 
 /** Map a free-text fiber name ("Organic Cotton", "Recycled Polyester") to a canonical fiber. */
+const FAUX = /\b(faux|vegan|synthetic|imitation|artificial)\b/;
+
 export function resolveFiber(raw: string): ResolvedFiber | null {
+  const r = resolveFiberName(raw);
+  // "Vegan suede", "synthetic shearling"…: any leather word with a faux qualifier is man-made.
+  if (r?.fiber === "leather" && FAUX.test(raw.toLowerCase())) return { ...r, fiber: "faux_leather" };
+  return r;
+}
+
+function resolveFiberName(raw: string): ResolvedFiber | null {
   const name = raw
     .toLowerCase()
     .replace(/[®™*]/g, "")

@@ -10,7 +10,7 @@ const plexMono = IBM_Plex_Mono({ variable: "--font-plex-mono", subsets: ["latin"
 
 export const metadata: Metadata = {
   title: { default: "ShoppingSaver — 看清楚每個價格帶買到什麼", template: "%s · ShoppingSaver" },
-  description: "七個基本款品牌的女裝目錄，屬性統一、依材質與價格的性價比排序。",
+  description: "跨品牌基本款女裝目錄，屬性統一、依材質與價格的性價比排序。",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

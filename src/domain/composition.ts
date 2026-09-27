@@ -111,7 +111,7 @@ export function parseComposition(input: string): ParseResult {
 
   // Split on "Label:" boundaries. Labels are short words before a colon.
   const segments: { label: string | null; body: string }[] = [];
-  const labelRe = /(?:^|[.;/\n]|\s{2,})\s*([A-Za-z][A-Za-z ,&()-]{1,40}):\s*/g;
+  const labelRe = /(?:^|[.;/\n]|\s{2,})\s*([A-Za-z][A-Za-z ,&()-]{1,80}):\s*/g;
   const marks = [...text.matchAll(labelRe)].map((m) => ({ label: m[1].trim(), start: m.index!, end: m.index! + m[0].length }));
   if (marks.length === 0) {
     segments.push({ label: null, body: text });
