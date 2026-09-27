@@ -12,7 +12,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "index": "tsx src/pipeline/run.ts",
-    "report": "tsx src/pipeline/report.ts"
+    "report": "tsx src/pipeline/report.ts",
+    "db:copy": "tsx scripts/copy-db.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

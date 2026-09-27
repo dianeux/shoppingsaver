@@ -55,10 +55,19 @@ npm test
 
 ## 部署
 
-1. 在 Neon 建立資料庫，取得 pooled connection string。
-2. Vercel 匯入此 repo，設定環境變數 `DATABASE_URL`。
-3. GitHub repo 設定 secrets：`DATABASE_URL`、`ANTHROPIC_API_KEY`；可選 variable `LLM_BUDGET_USD`。
-4. `.github/workflows/nightly-index.yml` 每天 07:30 UTC 執行；也可手動觸發並指定品牌。
+1. 合併到 `main`（Vercel 的正式站部署 `main`）。
+2. vercel.com 以 GitHub 登入 → Add New → Project → 匯入 `dianeux/shoppingsaver`。
+3. Vercel 專案 → Storage → 建立 Neon Postgres 並連接專案（自動設定 `DATABASE_URL`）。
+4. 把 Neon 的 `DATABASE_URL=…` 貼進本機 `.env.production.local`（已被 git 忽略）。
+5. 對雲端資料庫跑 migration，並把本機已索引的資料搬上去（免去數小時的首次抓取）：
+   ```bash
+   DATABASE_URL="$(grep ^DATABASE_URL= .env.production.local | cut -d= -f2-)" npm run db:migrate
+   npm run db:copy        # 本機 PGlite → .env.production.local 的資料庫；可重複執行
+   ```
+6. Vercel 按 Redeploy（頁面預先產生時會讀資料庫；之後每小時 ISR 更新）。
+7. GitHub Actions 夜間排程需要 secret：`gh secret set DATABASE_URL`（貼上連線字串）；可選 `ANTHROPIC_API_KEY`。
+
+CI（`.github/workflows/ci.yml`）在每次推送與 PR 跑 lint、型別檢查與單元測試。
 
 ## 關鍵設計決策
 
