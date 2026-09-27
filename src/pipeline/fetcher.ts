@@ -120,8 +120,18 @@ export async function brandFetch(brand: BrandId, url: string, init?: RequestInit
   }
 }
 
-export async function brandJson<T>(brand: BrandId, url: string): Promise<T> {
-  return (await brandFetch(brand, url, { headers: { Accept: "application/json" } })).json() as Promise<T>;
+export async function brandJson<T>(brand: BrandId, url: string, init?: RequestInit): Promise<T> {
+  const res = await brandFetch(brand, url, { ...init, headers: { Accept: "application/json", ...init?.headers } });
+  return res.json() as Promise<T>;
+}
+
+/** POST a form-encoded body and parse JSON (sites whose storefront API is an XHR form post). */
+export function brandPostForm<T>(brand: BrandId, url: string, form: Record<string, string>): Promise<T> {
+  return brandJson<T>(brand, url, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+    body: new URLSearchParams(form).toString(),
+  });
 }
 
 export async function brandText(brand: BrandId, url: string): Promise<string> {

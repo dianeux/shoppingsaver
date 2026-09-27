@@ -28,15 +28,17 @@ export const COLOR_FAMILY_LABEL: Record<ColorFamily, { label: string; swatch: st
 // Checked in order; first hit wins. More specific words come first
 // ("navy" before "blue", "off white" before "white", "rose" before "red").
 const RULES: [RegExp, ColorFamily][] = [
-  [/\b(stripe[sd]?|striped|border|check(ed)?|plaid|gingham|print(ed)?|floral|dot(s|ted)?|pattern|leopard|camo|multi|houndstooth|argyle|tie[- ]?dye|jacquard|paisley)\b/, "pattern"],
+  [/\b(stripe[sd]?|striped|border|check(ed)?|plaid|gingham|print(ed)?|floral|dot(s|ted)?|pattern|leopard|camo|multi|houndstooth|argyle|tie[- ]?dye|jacquard|paisley|ditsy|spots|flora|petals?|leaves|patch)\b/, "pattern"],
+  // Brand print names that don't say "print" (checked against the swatch image).
+  [/\b(dayspring)\b/, "pattern"],
   [/\b(navy|midnight|indigo|dark blue|marine)\b/, "navy"],
-  [/\b(off[- ]?white|ivory|cream|ecru|kinari|natural|snow|chalk|bone|white)\b/, "white"],
-  [/\b(charcoal|heather|gr[ae]y|silver|ash|slate|graphite|smoke|smoky gray|stone gray)\b/, "gray"],
+  [/\b(off[- ]?white|ivory|cream|ecru|kinari|natural|snow|chalk|bone|vanilla|white)\b/, "white"],
+  [/\b(charcoal|heather|gr[ae]y|silver|ash|slate|graphite|smoke|smoky gray|stone gray|cinder|flagstone)\b/, "gray"],
   [/\b(black|jet|onyx|ink)\b/, "black"],
-  [/\b(beige|oatmeal|oat|sand|khaki|camel|tan|taupe|greige|mushroom|ecru|flax|linen|nude|biscuit|wheat|light brown)\b/, "beige"],
+  [/\b(beige|oatmeal|oat|sand|khaki|camel|tan|taupe|greige|mushroom|ecru|flax|linen|nude|biscuit|wheat|light brown|oak|sesame|champagne|parchment|oyster)\b/, "beige"],
   [/\b(brown|mocha|chocolate|coffee|espresso|cocoa|chestnut|rust|cognac|caramel|walnut|umber|sienna|tobacco|brick brown)\b/, "brown"],
-  [/\b(blue|denim|sky|azure|cobalt|teal|aqua|turquoise|cyan|sax|chambray|powder blue|steel)\b/, "blue"],
-  [/\b(green|olive|sage|khaki green|forest|mint|moss|emerald|jade|pistachio|lime|army)\b/, "green"],
+  [/\b(blue|denim|sky|azure|cobalt|teal|aqua|turquoise|cyan|sax|chambray|powder blue|steel|celestial)\b/, "blue"],
+  [/\b(green|olive|sage|khaki green|forest|mint|moss|emerald|jade|pistachio|lime|army|seagrass)\b/, "green"],
   [/\b(pink|rose|blush|coral pink|salmon|fuchsia|magenta|peach)\b/, "pink"],
   [/\b(red|burgundy|wine|bordeaux|maroon|brick|cherry|crimson|scarlet|ruby|raspberry|oxblood)\b/, "red"],
   [/\b(purple|lavender|lilac|violet|plum|mauve|grape|orchid|aubergine)\b/, "purple"],

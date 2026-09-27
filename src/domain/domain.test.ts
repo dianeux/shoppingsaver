@@ -106,5 +106,10 @@ describe("colorFamily", () => {
     ["Smoky Green", "green"],
     ["Dark Mocha Brown", "brown"],
     ["Light Pink", "pink"],
+    ["Washed Flagstone", "gray"],
+    ["Parchment", "beige"],
+    ["Vanilla", "white"],
+    ["Flora Spots", "pattern"],
+    ["Washed Seagrass", "green"],
   ])("%s → %s", (raw, fam) => expect(colorFamily(raw)).toBe(fam));
 });

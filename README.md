@@ -23,6 +23,16 @@ GitHub Actions (nightly)            Vercel (Next.js 16)
 | `src/db/` | Drizzle schema 與 migration。 |
 | `src/app/`, `src/components/` | 前端。滑桿與篩選全部在前端運算，不打後端。 |
 
+## 品牌接入狀態
+
+| 品牌 | 狀態 | 資料來源 | 每晚請求數 |
+|---|---|---|---|
+| Muji | ✓ | Shopify `collections/<handle>/products.json` + 商品頁「Material & Care」（只抓新增或變動的商品） | ~10（清單）+ 變動商品數 |
+| Pact | ✓ | 自建平台（非 Shopify）。商品頁用的 `POST /controller/product`，不帶分類時一次回傳整個 apparel / underwear / clearance，含成分、各尺寸庫存與價格 | 3 |
+| Uniqlo、Quince、GU、H&M、Zara | 未接 | — | — |
+
+Pact 的正價與清倉版本用款號（style code）合併成同一件商品；多件組與套組排除，因為價格基準不同。
+
 ## 本機開發
 
 ```bash
@@ -30,7 +40,8 @@ npm install
 cp .env.example .env        # 本機預設連 PGlite；MIN_BRANDS_PER_L2=1 讓單一品牌也能看到頁面
 npm run db                  # 終端機 1：本機 Postgres（PGlite socket server，資料在 .data/）
 npm run db:migrate
-npm run index -- muji       # 抓 Muji（首次約 25 分鐘；之後只抓有變動的商品）
+npm run index               # 抓所有已接入品牌；也可指定：npm run index -- muji pact
+                            # Muji 首次約 25 分鐘，之後只抓有變動的商品；Pact 約 10 秒
 npm run report              # 目錄重疊表 + 各站抽取品質
 npm run dev                 # 終端機 2：http://localhost:3000
 npm test

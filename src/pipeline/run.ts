@@ -8,6 +8,7 @@ import { isBrandId, type BrandId } from "@/domain/brands";
 import { L2_INDEX } from "@/domain/taxonomy";
 import { normalizeSize, sortSizes } from "@/domain/sizes";
 import { mujiAdapter } from "./adapters/muji";
+import { pactAdapter } from "./adapters/pact";
 import { extractComposition, LlmBudget } from "./extract";
 import { detectPriceDrops } from "./drops";
 import { rescoreAll } from "./rescore";
@@ -19,6 +20,7 @@ import type { BrandAdapter, RawProduct, RawVariant } from "./types";
  */
 const ADAPTERS: Partial<Record<BrandId, BrandAdapter>> = {
   muji: mujiAdapter,
+  pact: pactAdapter,
 };
 
 /** Price history retention (PRD F13: ≥ 90 days). */
