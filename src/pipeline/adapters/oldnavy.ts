@@ -96,6 +96,7 @@ export function toRawProduct({ style, colors, subCategory }: OldNavyGroup): RawP
       compareAtPrice: regular > price ? regular : null,
       available: !/out of stock/i.test(c.inventoryStatus),
       imageUrl: img ? `${ORIGIN}${img.path}` : null,
+      url: `${ORIGIN}/browse/product.do?pid=${c.ccId}`,
     };
   });
   const lead = [...colors.values()][0];
@@ -120,7 +121,7 @@ export function toRawProduct({ style, colors, subCategory }: OldNavyGroup): RawP
 }
 
 const FIBER_SHARE =
-  /\d{1,3}\s?%\s*(?:[\w™®'-]+\s+){0,3}?(?:cotton|linen|flax|hemp|silk|wool|merino|cashmere|alpaca|lyocell|tencel|modal|cupro|viscose|rayon|ecovero|acetate|polyester|nylon|polyamide|acrylic|elastane|spandex|lycra|leather|other fibers?)\b/i;
+  /\d{1,3}\s?%\s*(?:[\w™®'-]+\s+){0,3}?(?:cotton|linen|flax|hemp|silk|wool|merino|cashmere|alpaca|lyocell|tencel|modal|cupro|viscose|rayon|ecovero|acetate|polyester|nylon|polyamide|acrylic|elastane|elastomultiester|spandex|lycra|rubber|leather|synthetic|metallic|other(?: fibers?)?)\b/i;
 
 /**
  * The "Fabric & care" bullets embedded (JSON-escaped) in the product page's

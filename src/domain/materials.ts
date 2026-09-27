@@ -22,7 +22,7 @@ export const ELASTANE_EXEMPT_MAX_PCT = 5;
 export type Fiber =
   | "cotton" | "linen" | "hemp" | "ramie" | "kapok" | "silk" | "wool" | "cashmere" | "alpaca" | "vicuna" | "mohair" | "yak" | "camel" | "down" | "feather" | "leather"
   | "lyocell" | "modal" | "cupro" | "viscose" | "acetate" | "triacetate" | "azlon"
-  | "polyester" | "elasterell" | "nylon" | "acrylic" | "elastane" | "polypropylene" | "polyethylene" | "polyurethane" | "metallic" | "faux_leather"
+  | "polyester" | "elasterell" | "nylon" | "acrylic" | "elastane" | "polypropylene" | "polyethylene" | "polyurethane" | "metallic" | "faux_leather" | "synthetic"
   | "other";
 
 export const FIBERS: Record<Fiber, { class: FiberClass; label: string; synonyms: string[] }> = {
@@ -58,10 +58,11 @@ export const FIBERS: Record<Fiber, { class: FiberClass; label: string; synonyms:
   azlon: { class: "regenerated", label: "大豆蛋白纖維", synonyms: ["azlon", "soy fiber", "soybean fiber", "soy protein fiber"] },
   polyester: { class: "synthetic", label: "聚酯", synonyms: ["polyester", "recycled polyester", "pet", "poly"] },
   // FTC generic name for bicomponent stretch polyester (PET/PTT); not spandex, so no exemption.
-  elasterell: { class: "synthetic", label: "彈性聚酯", synonyms: ["elasterell-p", "elasterell p", "elasterell"] },
+  elasterell: { class: "synthetic", label: "彈性聚酯", synonyms: ["elasterell-p", "elasterell p", "elasterell", "elastomultiester"] },
   nylon: { class: "synthetic", label: "尼龍", synonyms: ["nylon", "polyamide", "recycled nylon", "recycled polyamide"] },
   acrylic: { class: "synthetic", label: "壓克力", synonyms: ["acrylic", "modacrylic"] },
-  elastane: { class: "synthetic", label: "彈性纖維", synonyms: ["elastane", "spandex", "lycra", "elastic", "polyurethane elastic"] },
+  // Rubber here is the elastic thread in socks and waistbands.
+  elastane: { class: "synthetic", label: "彈性纖維", synonyms: ["elastane", "spandex", "lycra", "elastic", "polyurethane elastic", "rubber"] },
   polypropylene: { class: "synthetic", label: "聚丙烯", synonyms: ["polypropylene"] },
   polyethylene: { class: "synthetic", label: "聚乙烯", synonyms: ["polyethylene"] },
   faux_leather: {
@@ -69,6 +70,8 @@ export const FIBERS: Record<Fiber, { class: FiberClass; label: string; synonyms:
     label: "人造皮革",
     synonyms: ["faux leather", "vegan leather", "pu leather", "polyurethane leather", "synthetic leather", "imitation leather", "leatherette", "pleather", "faux suede", "vegan suede", "faux shearling"],
   },
+  // Unnamed but declared synthetic ("4% synthetic materials").
+  synthetic: { class: "synthetic", label: "合成纖維", synonyms: ["synthetic", "synthetic material", "synthetic materials", "synthetic fiber", "synthetic fibers"] },
   metallic: { class: "synthetic", label: "金屬纖維", synonyms: ["metallic", "metallic fiber", "lurex"] },
   polyurethane: { class: "synthetic", label: "聚氨酯", synonyms: ["polyurethane", "pu"] },
   // FTC lets fibers under 5% be listed as "other fiber(s)"; unknown type, so never scored (see composition.ts).

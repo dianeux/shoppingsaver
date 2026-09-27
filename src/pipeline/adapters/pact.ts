@@ -129,6 +129,7 @@ export function toRawProduct(g: PactGroup): RawProduct {
       compareAtPrice: Number(s.price?.msrp ?? c.price.msrp) > Number(s.price?.sale ?? c.price.sale) ? Number(s.price?.msrp ?? c.price.msrp) : null,
       available: s.inStock,
       imageUrl: c.tracking?.img?.large?.[0] ? https(c.tracking.img.large[0]) : null,
+      url: c.tracking?.url ? encodeURI(https(c.tracking.url)) : null,
     })),
   );
 

@@ -50,7 +50,7 @@ export const mujiAdapter: BrandAdapter = {
       for await (const p of listShopifyCollection("muji", ORIGIN, handle)) {
         if (seen.has(p.id)) continue;
         seen.add(p.id);
-        const variants = shopifyVariants(p);
+        const variants = shopifyVariants(p, { url: (v) => `${ORIGIN}/products/${p.handle}?variant=${v.id}` });
         const mapping = mapMujiCategory(p.product_type, p.tags, p.title);
         const hash = createHash("sha1")
           .update(JSON.stringify([EXTRACTOR_VERSION, p.title, p.body_html, p.product_type, [...p.tags].sort(), p.options]))

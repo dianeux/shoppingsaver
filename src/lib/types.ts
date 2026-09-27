@@ -13,6 +13,10 @@ export interface CardProduct {
   l2: L2;
   listPrice: number;
   salePrice: number;
+  /** Highest in-stock price across colors; above salePrice → "from $salePrice". */
+  maxPrice: number;
+  /** Color carrying salePrice (the card links to it). */
+  priceColor: string | null;
   colors: { raw: string; family: ColorFamily | null }[];
   colorFamilies: ColorFamily[];
   sizes: string[];

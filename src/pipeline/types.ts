@@ -9,6 +9,8 @@ export interface RawVariant {
   compareAtPrice: number | null;
   available: boolean;
   imageUrl: string | null;
+  /** Product page preselecting this color, when the site has one (the card links to the cheapest color). */
+  url?: string | null;
 }
 
 /** What an adapter hands the pipeline: brand-native data, not yet normalized. */

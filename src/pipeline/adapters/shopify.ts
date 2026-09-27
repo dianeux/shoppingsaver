@@ -36,8 +36,12 @@ export async function* listShopifyCollection(brand: BrandId, origin: string, han
   }
 }
 
-/** Map Shopify variants to RawVariants; `color` overrides a store that has no Color option. */
-export function shopifyVariants(p: ShopifyProduct, color?: string): RawVariant[] {
+/**
+ * Map Shopify variants to RawVariants. `color` overrides a store that has no
+ * Color option; `url` gives the page for a variant (e.g. preselecting its color).
+ */
+export function shopifyVariants(p: ShopifyProduct, opts: { color?: string; url?: (v: ShopifyVariant) => string } = {}): RawVariant[] {
+  const { color } = opts;
   const pos = (name: RegExp) => p.options.find((o) => name.test(o.name))?.position;
   const colorPos = pos(/colou?r/i);
   const sizePos = pos(/size/i);
@@ -52,6 +56,7 @@ export function shopifyVariants(p: ShopifyProduct, color?: string): RawVariant[]
       compareAtPrice: compare && compare > price ? compare : null,
       available: v.available,
       imageUrl: v.featured_image?.src ?? p.images[0]?.src ?? null,
+      url: opts.url?.(v) ?? null,
     };
   });
 }

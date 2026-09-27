@@ -29,6 +29,10 @@ export const products = pgTable(
     sourceCategory: text("source_category").notNull(),
     listPrice: numeric("list_price", { precision: 10, scale: 2, mode: "number" }).notNull(),
     salePrice: numeric("sale_price", { precision: 10, scale: 2, mode: "number" }).notNull(),
+    /** Highest in-stock price across colors; above salePrice means "from $X". */
+    maxPrice: numeric("max_price", { precision: 10, scale: 2, mode: "number" }),
+    /** Color that carries salePrice; productUrl points at it. */
+    priceColor: text("price_color"),
     colors: jsonb("colors").$type<ProductColor[]>().notNull(),
     colorFamilies: text("color_families").array().notNull().default(sql`'{}'::text[]`),
     sizeRange: text("size_range").array().notNull().default(sql`'{}'::text[]`),

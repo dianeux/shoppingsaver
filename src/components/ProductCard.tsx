@@ -32,6 +32,8 @@ export function ProductCard({
 }) {
   const [open, setOpen] = useState(false);
   const onSale = p.salePrice < p.listPrice;
+  // Colors are priced differently: the card shows (and links to) the cheapest one.
+  const priceVaries = p.maxPrice > p.salePrice;
   const rel = range[1] > range[0] ? (p.score - range[0]) / (range[1] - range[0]) : 0.5;
   const img = thumb(p.imageUrl);
   const materialMissing = p.compositionStatus !== "extracted";
@@ -91,7 +93,10 @@ export function ProductCard({
         </a>
 
         <div className="flex items-baseline gap-2">
-          <span className={`font-mono text-[15px] ${onSale || p.drop ? "text-madder" : ""}`}>{usd(p.salePrice)}</span>
+          <span className={`font-mono text-[15px] ${onSale || p.drop ? "text-madder" : ""}`}>
+            {usd(p.salePrice)}
+            {priceVaries && <span className="text-[11px] ml-0.5">起</span>}
+          </span>
           {p.drop ? (
             <span className="font-mono text-xs text-ink-faint">
               降價前 <span className="line-through">{usd(p.drop.baselinePrice)}</span>
@@ -100,6 +105,11 @@ export function ProductCard({
             onSale && <span className="font-mono text-xs text-ink-faint line-through">{usd(p.listPrice)}</span>
           )}
         </div>
+        {priceVaries && p.priceColor && (
+          <p className="-mt-1.5 text-[11px] leading-snug text-ink-faint">
+            {p.priceColor} 的價格；其他顏色最高 {usd(p.maxPrice)}
+          </p>
+        )}
 
         {/* Composition, printed like a care label */}
         <p className={`font-mono text-[11px] leading-relaxed ${materialMissing ? "text-warn" : "text-ink-soft"}`}>

@@ -14,6 +14,7 @@ import { pactAdapter } from "./adapters/pact";
 import { quinceAdapter } from "./adapters/quince";
 import { extractComposition, LlmBudget } from "./extract";
 import { detectPriceDrops } from "./drops";
+import { productPrice } from "./pricing";
 import { rescoreAll } from "./rescore";
 import type { BrandAdapter, RawProduct, RawVariant } from "./types";
 
@@ -49,11 +50,6 @@ function today(): string {
 function purchasable(p: RawProduct): RawVariant[] {
   const inStock = p.variants.filter((v) => v.available);
   return inStock.length ? inStock : p.variants;
-}
-
-function priceOf(variants: RawVariant[]): { list: number; sale: number } {
-  const cheapest = variants.reduce((a, b) => (b.price < a.price ? b : a));
-  return { sale: cheapest.price, list: cheapest.compareAtPrice ?? cheapest.price };
 }
 
 function colorsOf(variants: RawVariant[], stats: CrawlStats): ProductColor[] {
@@ -146,7 +142,7 @@ async function runBrand(adapter: BrandAdapter, budget: LlmBudget): Promise<void>
       const inStock = raw.variants.some((v) => v.available);
       if (!inStock) stats.soldOut++;
       const variants = purchasable(raw);
-      const { list, sale } = priceOf(variants);
+      const { list, sale, max, color: priceColor, url: productUrl } = productPrice(variants, raw.url);
       const colors = colorsOf(variants, stats);
       const main = outcome.composition?.main ?? [];
       const row = {
@@ -154,13 +150,15 @@ async function runBrand(adapter: BrandAdapter, budget: LlmBudget): Promise<void>
         brand,
         sourceId: raw.sourceId,
         productName: raw.name,
-        productUrl: raw.url,
+        productUrl,
         imageUrl: raw.imageUrl,
         categoryL1: L2_INDEX[raw.l2].l1,
         categoryL2: raw.l2,
         sourceCategory: raw.sourceCategory,
         listPrice: list,
         salePrice: sale,
+        maxPrice: max,
+        priceColor,
         colors,
         colorFamilies: [...new Set(colors.map((c) => c.family).filter((f): f is NonNullable<typeof f> => !!f))],
         // Some listings carry no per-size data (Quince); skip empty sizes rather than store "".

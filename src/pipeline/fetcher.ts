@@ -11,6 +11,22 @@ export const USER_AGENT = "ShoppingSaverBot/0.1 (+personal non-commercial portfo
 
 const MIN_GAP_MS = Number(process.env.CRAWL_MIN_GAP_MS ?? 1200);
 const MAX_RETRIES = 3;
+/** Per-request ceiling, so a site that stalls connections can't hang the nightly job. */
+const REQUEST_TIMEOUT_MS = Number(process.env.CRAWL_TIMEOUT_MS ?? 60_000);
+
+/** Network-level failures worth retrying: DNS blips, resets, timeouts. */
+const TRANSIENT_CODES = new Set(["ENOTFOUND", "EAI_AGAIN", "ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "EPIPE", "UND_ERR_SOCKET", "UND_ERR_CONNECT_TIMEOUT", "UND_ERR_HEADERS_TIMEOUT", "UND_ERR_BODY_TIMEOUT"]);
+
+const RETRY_BASE_MS = Number(process.env.CRAWL_RETRY_BASE_MS ?? 2000);
+
+function errorCode(err: Error): string {
+  return (err.cause as { code?: string } | undefined)?.code ?? (err as { code?: string }).code ?? err.name;
+}
+
+export function isTransientNetworkError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  return err.name === "TimeoutError" || err.name === "AbortError" || TRANSIENT_CODES.has(errorCode(err));
+}
 
 export class DisallowedError extends Error {}
 
@@ -77,6 +93,7 @@ async function rawFetch(url: string, init?: RequestInit): Promise<Response> {
         ...init,
         headers: { "User-Agent": USER_AGENT, ...init?.headers },
         redirect: "follow",
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
     } finally {
       lastRequestAt.set(host, Date.now());
@@ -89,10 +106,25 @@ async function rawFetch(url: string, init?: RequestInit): Promise<Response> {
 function robotsFor(origin: string): Promise<RobotsRules> {
   let p = robotsCache.get(origin);
   if (!p) {
-    p = rawFetch(`${origin}/robots.txt`).then(async (r) => (r.ok ? parseRobots(await r.text()) : { allow: [], disallow: [] }));
+    p = withNetworkRetry(() => rawFetch(`${origin}/robots.txt`)).then(async (r) => (r.ok ? parseRobots(await r.text()) : { allow: [], disallow: [] }));
+    // Don't cache a failure: the next request should try again rather than inherit it.
+    p.catch(() => robotsCache.delete(origin));
     robotsCache.set(origin, p);
   }
   return p;
+}
+
+/** Retry transient network errors with exponential backoff (2s, 4s, 8s by default). */
+async function withNetworkRetry<T>(fn: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (!isTransientNetworkError(err) || attempt >= MAX_RETRIES) throw err;
+      console.warn(`[fetch] ${errorCode(err as Error)}, retry ${attempt + 1}/${MAX_RETRIES}`);
+      await sleep(RETRY_BASE_MS * 2 ** attempt);
+    }
+  }
 }
 
 export function assertOfficial(brand: BrandId, url: string) {
@@ -109,7 +141,7 @@ export async function brandFetch(brand: BrandId, url: string, init?: RequestInit
   if (!robotsAllows(rules, u.pathname + u.search)) throw new DisallowedError(`robots.txt disallows ${u.pathname}`);
 
   for (let attempt = 0; ; attempt++) {
-    const res = await rawFetch(url, init);
+    const res = await withNetworkRetry(() => rawFetch(url, init));
     // A redirect off the official host would bypass the whitelist.
     assertOfficial(brand, res.url || url);
     if (res.ok) return res;

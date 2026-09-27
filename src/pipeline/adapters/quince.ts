@@ -138,6 +138,7 @@ export function toRawProduct({ item, colors }: QuinceGroup): RawProduct {
     compareAtPrice: null, // Quince's "traditional retail" figure is a competitor comparison, not its own list price
     available: !cv.atcDisabled,
     imageUrl: cv.images[0]?.url ?? null,
+    url: `${ORIGIN}/${cv.url.replace(/^\//, "")}`,
   }));
   const hash = createHash("sha1")
     .update(JSON.stringify([EXTRACTOR_VERSION, item.title, item.slug, c.department, c.subdepartment, c.class]))

@@ -23,6 +23,8 @@ export function mapOldNavyCategory({ name, subCategory, webProductType, subBrand
   const t = name.toLowerCase();
   const wpt = (webProductType ?? "").toLowerCase();
 
+  // Multipacks don't share a price basis with single items (same rule as Pact and Quince).
+  if (/\b\d+-pack\b/.test(t)) return { excluded: "multipack" };
   // Third-party dropship sellers and licensed men's/kids' merch are outside the product (PRD ch.5).
   if (wpt === "dropship") return { excluded: "marketplace seller" };
   if (/^(mens|toddler|baby|boys|girls|home)\b/.test(wpt) || /\bfor (men|boys|girls|kids|toddlers?)\b/.test(t)) return { excluded: "not women's" };

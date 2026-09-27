@@ -50,7 +50,8 @@ export function toRawProduct(group: ShopifyProduct[]): RawProduct {
   const { name } = splitTitle(lead.title);
   const subcategory = tagValue(lead, "subcategory");
   const mapping = mapEverlaneCategory(lead.product_type, subcategory, lead.title);
-  const variants = group.flatMap((p) => shopifyVariants(p, splitTitle(p.title).color));
+  // Each colorway is its own product page.
+  const variants = group.flatMap((p) => shopifyVariants(p, { color: splitTitle(p.title).color, url: () => `${ORIGIN}/products/${p.handle}` }));
   const groupId = tagValue(lead, "product group") ?? lead.handle;
   const hash = createHash("sha1")
     .update(JSON.stringify([EXTRACTOR_VERSION, name, lead.product_type, subcategory, groupId]))

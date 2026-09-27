@@ -77,6 +77,8 @@ function sumPct(fibers: FiberShare[]) {
   return fibers.reduce((s, f) => s + f.percentage, 0);
 }
 
+const PART_WORDS = "(?:shell|lining|fill|filling|rib|ribbing|main|body|trim|cuffs?|hem|pocket(?:ing|s)?|collar|hood|insulation|contrast|sleeves?|yoke|facing|interlining)";
+
 /** Garment parts that brands name without a colon ("Shell 95% Tencel, lining 95% polyester"). */
 const BARE_PART = /\b(shell|lining|body|outer|cuffs?(?:\s+and\s+hem)?|hem|trim|fill|filling|rib|ribbing|pocketing|sleeves?|top|skirt|bottom)\s+(?:is\s+|are\s+)?(?=\d{1,3}\s?%)/gi;
 
@@ -85,10 +87,26 @@ const BARE_PART = /\b(shell|lining|body|outer|cuffs?(?:\s+and\s+hem)?|hem|trim|f
  *   "Top - 57% cotton"            → "Top: 57% cotton"
  *   "…polyester Cuffs: 90% nylon" → "…polyester; Cuffs: 90% nylon"
  *   "Shell 95% x, lining 95% y"   → "; Shell: 95% x, ; lining: 95% y"
+ *   "…/ 100% cotton gusset"       → "…/ Gusset: 100% cotton"
  * Parenthetical asides ("( soft satin finish )") are dropped.
  */
-export function normalizeLabels(text: string): string {
+/** A slash-separated piece that names its part at the end: "100% polyester mesh pocket lining". */
+const TRAILING_PART = /^(\d{1,3}\s?%.*?)\s+\(?((?:[a-z-]+\s+){0,3}(?:trim|lining|gusset|pocketing|binding|facing|insert|contrast|panels?|waistband|liner)(?:\s+and\s+[a-z-]+)?)\)?\.?$/i;
+
+function labelTrailingParts(text: string): string {
   return text
+    .split(/\s+\/\s+/)
+    .map((piece) => {
+      const m = piece.match(TRAILING_PART);
+      return m ? `${m[2][0].toUpperCase()}${m[2].slice(1)}: ${m[1]}` : piece;
+    })
+    .join(" / ");
+}
+
+export function normalizeLabels(text: string): string {
+  // Unlabeled pieces before the first label stay together as the main fabric:
+  // "79% nylon / 21% spandex / 100% polyester pocket lining" → main 79/21 + "Pocket lining: 100% polyester".
+  return labelTrailingParts(text)
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "") // vicuña → vicuna
     .replace(/\([^)]*\)/g, " ")
@@ -96,6 +114,11 @@ export function normalizeLabels(text: string): string {
     .replace(BARE_PART, (_, part: string) => `; ${part}: `)
     // Only split where a label directly follows a fiber share, so "Body, Pocket: …" stays one label.
     .replace(/(\d{1,3}\s?%\s*[A-Za-z™®'-]+(?:\s+[a-z™®'-]+){0,3})\s+([A-Z][A-Za-z-]*(?:\s+(?:and|&)\s+[A-Za-z-]+)?)\s*:\s*(?=\d)/g, "$1; $2: ")
+    // Known part names after a fiber share, in any case and after a comma:
+    // "Shell: 100% Recycled Nylon Lining: 100% …", "…1% Elastane, Rib: 68% Wool".
+    .replace(new RegExp(`(\\d{1,3}\\s?%[^:;/]*?)[\\s,]+((?:outer\\s+)?${PART_WORDS}(?:\\s+(?:and|&)\\s+[a-z]+)?)\\s*:`, "gi"), "$1; $2:")
+    // A share that names its part at the end: "…, 100% Recycled Polyester Lining".
+    .replace(/,\s*(\d{1,3}\s?%[^,;/]*?)\s+lining\b/gi, "; Lining: $1")
     .replace(/\s+/g, " ")
     .trim();
 }
