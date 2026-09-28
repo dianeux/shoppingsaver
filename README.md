@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ShoppingSaver
 
-## Getting Started
+跨品牌女裝基本款選購網站。每晚索引七個品牌美國站的目錄，把材質、顏色、尺寸、品類正規化成同一套 schema，依「材質 × 價格」的性價比排序。
 
-First, run the development server:
+> 不是找最低價，是看清楚每個價格帶買到什麼。
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 架構
+
+```
+GitHub Actions (nightly)            Vercel (Next.js 16)
+  adapters/<brand>.ts   ──┐           /            品類入口（覆蓋數門檻）
+  fetcher.ts（白名單/robots/限速）      /c/[l2]      品類瀏覽：權重滑桿、篩選、分數拆解
+  extract.ts（parser → Haiku 4.5）     /brand/[id]  品牌交叉檢視
+  rescore.ts（L2 內價格百分位）         /deals       本週降價（比前一天便宜，追蹤 7 天）
+  drops.ts（降價偵測）   ──┴──► Postgres (Neon) ◄──┘
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| 目錄 | 內容 |
+|---|---|
+| `src/domain/` | 純函式：taxonomy、纖維字典與係數、成分解析、色族、尺寸、性價比公式。有單元測試。 |
+| `src/pipeline/` | 夜間索引：抓取、抽取、正規化、算分、降價偵測、品質報表。 |
+| `src/pipeline/adapters/` | 每個品牌一個 adapter + 手工分類映射表（版本化）。 |
+| `src/db/` | Drizzle schema 與 migration。 |
+| `src/app/`, `src/components/` | 前端。滑桿與篩選全部在前端運算，不打後端。 |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 品牌接入狀態
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| 品牌 | 狀態 | 資料來源 | 每晚請求數 |
+|---|---|---|---|
+| Muji | ✓ | Shopify `collections/<handle>/products.json` + 商品頁「Material & Care」（只抓新增或變動的商品） | ~10（清單）+ 變動商品數 |
+| Pact | ✓ | 自建平台（非 Shopify）。商品頁用的 `POST /controller/product`，不帶分類時一次回傳整個 apparel / underwear / clearance，含成分、各尺寸庫存與價格 | 3 |
+| Quince | ✓ | Next.js 網站。女裝服飾列表頁前 30 件在伺服器端渲染，其餘由網站自己的 presentation-layer API 分頁（與頁面捲動時的呼叫相同）；成分只在商品頁，新品或變動時才抓 | ~43（列表）+ 變動商品數 |
+| Uniqlo、GU | ✗ 暫無法接入 | 兩站對所有非瀏覽器程式都不回應（連 robots.txt 都逾時），要取得資料只能偽裝成瀏覽器，違反本專案「標明 User-Agent、不偽裝」原則 | — |
+| H&M、Zara | 未接 | — | — |
 
-## Learn More
+Pact 的正價與清倉版本用款號（style code）合併成同一件商品；多件組與套組排除，因為價格基準不同。
 
-To learn more about Next.js, take a look at the following resources:
+Quince 的列表依顏色重複列出同一件商品，以 productId 合併；它的「traditional retail price」是對照其他品牌的價格，不是自己的原價，所以不當作原價。泳裝不在 taxonomy 內而排除；伴娘服歸入擴充節點「正裝與宴會服」。只抓到內裡成分的商品標為「成分待補」，不以內裡計分。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 本機開發
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm install
+cp .env.example .env        # 本機預設連 PGlite；MIN_BRANDS_PER_L2=1 讓單一品牌也能看到頁面
+npm run db                  # 終端機 1：本機 Postgres（PGlite socket server，資料在 .data/）
+npm run db:migrate
+npm run index               # 抓所有已接入品牌；也可指定：npm run index -- muji pact
+                            # Muji 首次約 25 分鐘，之後只抓有變動的商品；Pact 約 10 秒
+npm run report              # 目錄重疊表 + 各站抽取品質
+npm run dev                 # 終端機 2：http://localhost:3000
+npm test
+```
 
-## Deploy on Vercel
+`ANTHROPIC_API_KEY` 沒設也能跑：解析器處理不了的成分會標成 `extraction_failed`（顯示「成分待補」），不會亂猜。
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 部署
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. 合併到 `main`（Vercel 的正式站部署 `main`）。
+2. vercel.com 以 GitHub 登入 → Add New → Project → 匯入 `dianeux/shoppingsaver`。
+3. Vercel 專案 → Storage → 建立 Neon Postgres 並連接專案（自動設定 `DATABASE_URL`）。
+4. 把 Neon 的 `DATABASE_URL=…` 貼進本機 `.env.production.local`（已被 git 忽略）。
+5. 對雲端資料庫跑 migration，並把本機已索引的資料搬上去（免去數小時的首次抓取）：
+   ```bash
+   DATABASE_URL="$(grep ^DATABASE_URL= .env.production.local | cut -d= -f2-)" npm run db:migrate
+   npm run db:copy        # 本機 PGlite → .env.production.local 的資料庫；可重複執行
+   ```
+6. Vercel 按 Redeploy（頁面預先產生時會讀資料庫；之後每小時 ISR 更新）。
+7. GitHub Actions 夜間排程需要 secret：`gh secret set DATABASE_URL`（貼上連線字串）；可選 `ANTHROPIC_API_KEY`。
+
+CI（`.github/workflows/ci.yml`）在每次推送與 PR 跑 lint、型別檢查與單元測試。
+
+## 關鍵設計決策
+
+- **成分三態**：`extracted` / `extraction_failed`（是 bug，要修）/ `not_disclosed`（事實）。兩種缺值材質分都以 0 計，但卡片上會分開標示。
+- **LLM 只做格式整理**：Haiku 把雜亂文字整理成「纖維 + 百分比」，再送回同一個解析器驗證；纖維分類與係數永遠由程式決定。
+- **只對變動的商品抽取**：內容雜湊（含抽取器版本號）沒變就沿用上次結果；先前失敗的商品只用新版解析器重跑存下的文字，不重抓也不打 LLM。
+- **價格百分位在所有品牌載入後重算**：新品牌會改變每件商品的百分位。
+- **本週降價 = 比前一天便宜**：降價前一天的價格記為第 0 天價格；追蹤 7 天（降價當天算第 1 天），期間再降就重新計時但第 0 天價格不變；價格漲回第 0 天就立即移除。
+- **售完商品不顯示**：所有顏色、尺寸都賣完才算售完，從頁面、百分位計算、降價榜和首頁代表圖中排除，但持續記錄價格，補貨後自動回來；部分缺貨的商品只顯示有貨的顏色與尺寸，價格也以有貨的款式計算。
+- **皮革（PRD 未解問題 3，已決議）**：天然皮革（含麂皮、羊毛皮）係數 1.0；人造皮革（faux／vegan／PU leather 等，名稱帶 faux、vegan、synthetic 一律視為人造）係數 0。
+- **依顏色而異的成分**：同一商品不同顏色成分不同時，以第一組顏色計分。
+- **站點降級可見**：品牌只要曾經成功抓過，之後失敗或超過 36 小時沒更新，就會在頁面上點名。

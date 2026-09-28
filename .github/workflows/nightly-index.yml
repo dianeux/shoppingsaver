@@ -1,0 +1,37 @@
+name: Nightly index
+
+on:
+  schedule:
+    # 07:30 UTC ≈ 03:30 US Eastern — outside brand-site peak hours (PRD ch.11).
+    - cron: "30 7 * * *"
+  workflow_dispatch:
+    inputs:
+      brands:
+        description: "Space-separated brand ids (empty = all)"
+        required: false
+        default: ""
+
+concurrency:
+  group: nightly-index
+  cancel-in-progress: false
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    # PRD guardrail: the nightly job must finish within 4 hours.
+    timeout-minutes: 240
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      LLM_BUDGET_USD: ${{ vars.LLM_BUDGET_USD || '2' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run db:migrate
+      - name: Index
+        run: npm run index -- ${{ github.event.inputs.brands }}
