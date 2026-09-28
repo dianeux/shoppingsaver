@@ -41,7 +41,7 @@ Quince 的列表依顏色重複列出同一件商品，以 productId 合併；�
 
 ```bash
 npm install
-cp .env.example .env        # 本機預設連 PGlite；MIN_BRANDS_PER_L2=1 讓單一品牌也能看到頁面
+cp .env.example .env        # 本機預設連 PGlite
 npm run db                  # 終端機 1：本機 Postgres（PGlite socket server，資料在 .data/）
 npm run db:migrate
 npm run index               # 抓所有已接入品牌；也可指定：npm run index -- muji pact

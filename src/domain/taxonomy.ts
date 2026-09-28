@@ -102,5 +102,9 @@ export function isL2(v: string): v is L2 {
   return v in L2_INDEX;
 }
 
-/** PRD ch.5: an L2 page goes live only when at least this many brands stock it. */
-export const MIN_BRANDS_PER_L2 = 4;
+/**
+ * An L2 page goes live once at least this many brands stock it. PRD ch.5 asked
+ * for 4; lowered to 1 so single-brand categories show too. Override with the
+ * MIN_BRANDS_PER_L2 env var.
+ */
+export const MIN_BRANDS_PER_L2 = 1;
