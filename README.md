@@ -12,7 +12,7 @@ GitHub Actions (nightly)            Vercel (Next.js 16)
   fetcher.ts（白名單/robots/限速）      /c/[l2]      品類瀏覽：權重滑桿、篩選、分數拆解
   extract.ts（parser → Haiku 4.5）     /brand/[id]  品牌交叉檢視
   rescore.ts（L2 內價格百分位）         /deals       本週降價（比前一天便宜，追蹤 7 天）
-  drops.ts（降價偵測）   ──┴──► Postgres (Neon) ◄──┘
+  drops.ts（降價偵測）   ──┴──► Postgres (Supabase) ◄──┘
 ```
 
 | 目錄 | 內容 |
@@ -57,15 +57,16 @@ npm test
 
 1. 合併到 `main`（Vercel 的正式站部署 `main`）。
 2. vercel.com 以 GitHub 登入 → Add New → Project → 匯入 `dianeux/shoppingsaver`。
-3. Vercel 專案 → Storage → 建立 Neon Postgres 並連接專案（自動設定 `DATABASE_URL`）。
-4. 把 Neon 的 `DATABASE_URL=…` 貼進本機 `.env.production.local`（已被 git 忽略）。
+3. supabase.com 建立專案（地區選 East US (North Virginia)，與 Vercel 預設地區相同）。在 Connect 取得兩個 pooler 連線字串，並在 Database settings → SSL Configuration 下載根憑證（Supabase 的憑證不是公開 CA 簽的，程式會用它驗證連線）。
+4. 本機 `.env.production.local`（已被 git 忽略）寫入 **Session pooler（:5432）** 的 `DATABASE_URL=…` 與 `DATABASE_CA_CERT="…PEM…"`；
+   Vercel → Settings → Environment Variables 加入 **Transaction pooler（:6543）** 的 `DATABASE_URL` 與同一份 `DATABASE_CA_CERT`。
 5. 對雲端資料庫跑 migration，並把本機已索引的資料搬上去（免去數小時的首次抓取）：
    ```bash
-   DATABASE_URL="$(grep ^DATABASE_URL= .env.production.local | cut -d= -f2-)" npm run db:migrate
-   npm run db:copy        # 本機 PGlite → .env.production.local 的資料庫；可重複執行
+   npm run db:migrate:prod   # 讀 .env.production.local
+   npm run db:copy           # 本機 PGlite → .env.production.local 的資料庫；可重複執行
    ```
 6. Vercel 按 Redeploy（頁面預先產生時會讀資料庫；之後每小時 ISR 更新）。
-7. GitHub Actions 夜間排程需要 secret：`gh secret set DATABASE_URL`（貼上連線字串）；可選 `ANTHROPIC_API_KEY`。
+7. GitHub Actions 夜間排程需要 secrets：`gh secret set DATABASE_URL`（Session pooler 連線字串）與 `gh secret set DATABASE_CA_CERT < 憑證檔`；可選 `ANTHROPIC_API_KEY`。
 
 CI（`.github/workflows/ci.yml`）在每次推送與 PR 跑 lint、型別檢查與單元測試。
 
