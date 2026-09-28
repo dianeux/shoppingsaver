@@ -43,3 +43,6 @@ next-env.d.ts
 
 # local data
 /.data
+
+# Database root certificates (kept in env vars instead)
+*.crt
