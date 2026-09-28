@@ -1,36 +1,35 @@
 /**
  * One-off: copy the indexed catalog from one Postgres to another (e.g. the
- * local PGlite server → Neon) so production doesn't start empty or need a
+ * local PGlite server → Supabase) so production doesn't start empty or need a
  * multi-hour first crawl. The target must already be migrated.
  *
  *   SOURCE_DATABASE_URL=postgres://…local… TARGET_ENV_FILE=.env.production.local npm run db:copy
  *
- * The target URL is read from TARGET_ENV_FILE (DATABASE_URL=…) so it never has
- * to be typed on the command line. Existing target rows are kept (ON CONFLICT DO NOTHING).
+ * The target URL (and DATABASE_CA_CERT, if the host needs one) is read from
+ * TARGET_ENV_FILE so it never has to be typed on the command line. Existing
+ * target rows are kept (ON CONFLICT DO NOTHING).
  */
 import { readFileSync } from "node:fs";
+import { parse } from "dotenv";
 import pg from "pg";
+import { connectionConfig } from "../src/db/connection";
 
 const TABLES = ["products", "price_snapshots", "price_drops", "crawl_runs"] as const; // FK order
 const BATCH = 200;
 
-function targetUrl(): string {
+function targetEnv() {
   const file = process.env.TARGET_ENV_FILE ?? ".env.production.local";
-  const line = readFileSync(file, "utf8").split("\n").find((l) => l.startsWith("DATABASE_URL="));
-  if (!line) throw new Error(`DATABASE_URL not found in ${file}`);
-  return line.slice("DATABASE_URL=".length).trim().replace(/^["']|["']$/g, "");
+  const env = parse(readFileSync(file));
+  if (!env.DATABASE_URL) throw new Error(`DATABASE_URL not found in ${file}`);
+  return { url: env.DATABASE_URL, ca: env.DATABASE_CA_CERT };
 }
 
-function client(url: string) {
-  const local = /localhost|127\.0\.0\.1/.test(url);
-  return new pg.Client({ connectionString: url, ssl: local ? false : { rejectUnauthorized: true } });
-}
-
-const source = client(process.env.SOURCE_DATABASE_URL ?? "postgres://postgres:postgres@127.0.0.1:5433/postgres");
-const target = client(targetUrl());
+const dest = targetEnv();
+const source = new pg.Client(connectionConfig(process.env.SOURCE_DATABASE_URL ?? "postgres://postgres:postgres@127.0.0.1:5433/postgres", undefined));
+const target = new pg.Client(connectionConfig(dest.url, dest.ca));
 await source.connect();
 await target.connect();
-console.log(`target host: ${new URL(targetUrl()).host}`);
+console.log(`target host: ${new URL(dest.url).host}`);
 
 for (const table of TABLES) {
   const cols = (
