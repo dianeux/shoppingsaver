@@ -19,6 +19,13 @@ describe("connectionConfig", () => {
     expect(ssl).toEqual({ rejectUnauthorized: true, ca: PEM });
   });
 
+  it("rejects pasted values that aren't a bare URL, without echoing them", () => {
+    for (const bad of ["DATABASE_URL=postgres://u:secret@h/db", '"postgres://u:secret@h/db"']) {
+      expect(() => connectionConfig(bad, "")).toThrow(/must start with postgres/);
+      expect(() => connectionConfig(bad, "")).not.toThrow(/secret/);
+    }
+  });
+
   it("drops URL ssl params that would override the ssl object", () => {
     const { connectionString } = connectionConfig("postgres://u:p@db.example.com/db?sslmode=require&application_name=x", "");
     expect(connectionString).toBe("postgres://u:p@db.example.com/db?application_name=x");
