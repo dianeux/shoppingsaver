@@ -6,7 +6,7 @@ import type { L2 } from "@/domain/taxonomy";
  * (e.g. "Bottoms / Denim / Pants"). Rules run in order; first match wins.
  * Bump the version on any edit.
  */
-export const QUINCE_MAPPING_VERSION = "quince-2026-09-27.1";
+export const QUINCE_MAPPING_VERSION = "quince-2026-09-30.1";
 
 export interface QuinceClassification {
   department?: string | null;
@@ -24,6 +24,8 @@ export function mapQuinceCategory(title: string, c: QuinceClassification): Quinc
 
   // Multipacks don't share a price basis with single items (same rule as Pact).
   if (/\b\d+-pack\b/.test(t)) return { excluded: "multipack" };
+  // Men's swim trunks sit under Bottoms / Shorts; swimwear is outside the taxonomy either way.
+  if (/\bswim\b/.test(t)) return { excluded: "swimwear" };
 
   switch (dept) {
     case "Swimwear":
