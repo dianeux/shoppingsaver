@@ -24,6 +24,14 @@ export const products = pgTable(
     sourceId: text("source_id").notNull(),
     /** Catalog section; percentiles and pages are per gender. */
     gender: text("gender").$type<Gender>().notNull().default("women"),
+    /**
+     * "crawl" = nightly index; "user" = added by a visitor with the bookmarklet (brands we
+     * can't crawl). User rows are shown for 30 days after their last confirmation and are
+     * hidden early once reported gone twice; they never shift crawled products' percentiles.
+     */
+    source: text("source").$type<"crawl" | "user">().notNull().default("crawl"),
+    /** "No longer sold" reports on a user-submitted row since its last confirmation. */
+    reports: integer("reports").notNull().default(0),
     productName: text("product_name").notNull(),
     productUrl: text("product_url").notNull(),
     imageUrl: text("image_url"),
@@ -127,3 +135,19 @@ export const priceDrops = pgTable("price_drops", {
   /** Total drop versus the day-0 price. */
   dropPct: real("drop_pct").notNull(),
 });
+
+/**
+ * Bookmarklet submissions and "gone" reports, for rate limits. The IP is stored
+ * only as a salted hash.
+ */
+export const submissionEvents = pgTable(
+  "submission_events",
+  {
+    id: serial("id").primaryKey(),
+    kind: text("kind").$type<"submit" | "report">().notNull(),
+    ipHash: text("ip_hash").notNull(),
+    productId: text("product_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("submission_events_ip_idx").on(t.ipHash, t.createdAt)],
+);

@@ -10,9 +10,9 @@ export function SiteHeader() {
   const gender = genderOfPath(usePathname());
   return (
     <header className="border-b border-rule/80 bg-cloth/85 backdrop-blur-sm sticky top-0 z-30">
-      <div className="mx-auto lg:max-w-[90vw] px-4 sm:px-6 h-14 flex items-center gap-6">
+      <div className="mx-auto lg:max-w-[90vw] px-4 sm:px-6 h-14 flex items-center gap-3 sm:gap-6">
         <Link href={genderPath(gender, "/")} className="flex items-baseline gap-2 shrink-0">
-          <span className="font-display text-2xl leading-none tracking-tight">ShoppingSaver</span>
+          <span className="font-display text-xl sm:text-2xl leading-none tracking-tight">ShoppingSaver</span>
           <span className="hidden sm:inline font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">{gender} · us</span>
         </Link>
         <form action={genderPath(gender, "/search")} role="search" className="ml-auto hidden sm:block">
@@ -23,7 +23,7 @@ export function SiteHeader() {
             className="w-56 lg:w-72 border border-rule bg-paper/80 px-3 py-1.5 text-sm focus:outline-none focus:border-ink"
           />
         </form>
-        <nav className="ml-auto sm:ml-0 flex items-center gap-5 text-sm">
+        <nav className="ml-auto sm:ml-0 flex items-center gap-2.5 sm:gap-5 text-sm whitespace-nowrap">
           <Link href={genderPath(gender, "/search")} className="sm:hidden text-ink-soft hover:text-ink">搜尋</Link>
           <div className="flex items-center gap-3" aria-label="女裝或男裝">
             {GENDERS.map((g) => (
@@ -37,7 +37,10 @@ export function SiteHeader() {
               </Link>
             ))}
           </div>
-          <Link href={genderPath(gender, "/deals")} className="text-madder hover:underline underline-offset-4 decoration-1">本週降價</Link>
+          <Link href={genderPath(gender, "/deals")} className="text-madder hover:underline underline-offset-4 decoration-1">
+            <span className="sm:hidden">降價</span>
+            <span className="hidden sm:inline">本週降價</span>
+          </Link>
           <FavoritesLink />
         </nav>
       </div>

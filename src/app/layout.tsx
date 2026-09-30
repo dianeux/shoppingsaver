@@ -18,7 +18,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <main className="flex-1">{children}</main>
         <footer className="border-t border-rule/80 mt-16">
           <div className="mx-auto lg:max-w-[90vw] px-4 sm:px-6 py-8 text-xs text-ink-faint leading-relaxed flex flex-col sm:flex-row gap-2 sm:justify-between">
-            <p>價格與成分每晚從各品牌美國官網索引。實際價格以原站為準；本站不販售商品。</p>
+            <p>
+              價格與成分每晚從各品牌美國官網索引；Uniqlo、GU、Zara、H&amp;M 的商品由訪客
+              <a href="/add" className="underline underline-offset-2 hover:text-ink">用書籤小工具加入</a>。實際價格以原站為準；本站不販售商品。
+            </p>
             <p className="font-mono">material × w + price × (1 − w)</p>
           </div>
         </footer>

@@ -26,7 +26,7 @@ export async function detectPriceDrops(today: string) {
       SELECT DISTINCT ON (s.product_id) p.id AS product_id, s.sale_price AS previous_price, p.sale_price AS current_price
       FROM products p
       JOIN price_snapshots s ON s.product_id = p.id
-      WHERE p.active AND p.in_stock
+      WHERE p.active AND p.in_stock AND p.source = 'crawl'
         AND s.snapshot_date < ${today}::date
         AND s.snapshot_date >= ${today}::date - ${PREVIOUS_LOOKBACK_DAYS}::int
       ORDER BY s.product_id, s.snapshot_date DESC

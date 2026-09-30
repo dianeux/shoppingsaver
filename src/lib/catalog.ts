@@ -3,6 +3,7 @@ import { and, desc, eq, gte, inArray, lte, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db/client";
 import { crawlRuns, priceDrops, products } from "@/db/schema";
 import { BRANDS, type BrandId } from "@/domain/brands";
+import { REPORTS_TO_HIDE, SUBMISSION_TTL_DAYS } from "@/domain/clip";
 import { formatComposition, type Composition } from "@/domain/composition";
 import type { Gender } from "@/domain/gender";
 import { scoreProduct, type ParsedQuery } from "@/domain/search";
@@ -40,6 +41,8 @@ const cardColumns = {
   dropPct: priceDrops.dropPct,
   dropBaseline: priceDrops.baselinePrice,
   dropDetectedOn: priceDrops.detectedOn,
+  source: products.source,
+  lastSeenAt: products.lastSeenAt,
 };
 
 type Row = { [K in keyof typeof cardColumns]: unknown } & Record<string, unknown>;
@@ -67,11 +70,15 @@ function toCard(r: Row): CardProduct {
     materialScore: (r.materialScore as number | null) ?? null,
     pricePercentile: (r.pricePercentile as number | null) ?? 0.5,
     drop: r.dropPct != null ? { pct: r.dropPct as number, baselinePrice: r.dropBaseline as number, detectedOn: r.dropDetectedOn as string } : null,
+    submitted: r.source === "user" ? { confirmedOn: (r.lastSeenAt as Date).toISOString().slice(0, 10) } : null,
   };
 }
 
+/** User-submitted rows count while fresh and not reported gone; crawled rows always do. */
+const visible = sql`(${products.source} = 'crawl' OR (${products.lastSeenAt} > now() - make_interval(days => ${SUBMISSION_TTL_DAYS}) AND ${products.reports} < ${REPORTS_TO_HIDE}))`;
+
 /** Listed, in-stock products of one catalog section. */
-const listed = (gender: Gender) => [eq(products.gender, gender), eq(products.active, true), eq(products.inStock, true)];
+const listed = (gender: Gender) => [eq(products.gender, gender), eq(products.active, true), eq(products.inStock, true), visible];
 
 export async function productsForL2(l2: L2, gender: Gender): Promise<CardProduct[]> {
   const rows = await db
@@ -150,11 +157,11 @@ export type FavoriteProduct = CardProduct & { availability: Availability };
 export async function productsByIds(ids: string[]): Promise<FavoriteProduct[]> {
   if (ids.length === 0) return [];
   const rows = await db
-    .select({ ...cardColumns, active: products.active, inStock: products.inStock })
+    .select({ ...cardColumns, active: products.active, inStock: products.inStock, visible: sql<boolean>`${visible}` })
     .from(products)
     .leftJoin(priceDrops, eq(priceDrops.productId, products.id))
     .where(inArray(products.id, ids));
-  return rows.map((r) => ({ ...toCard(r), availability: !r.active ? "gone" : !r.inStock ? "sold_out" : "available" }));
+  return rows.map((r) => ({ ...toCard(r), availability: !r.active || !r.visible ? "gone" : !r.inStock ? "sold_out" : "available" }));
 }
 
 export async function productsForBrand(brand: BrandId, gender: Gender): Promise<CardProduct[]> {
@@ -225,7 +232,7 @@ export async function topValueByL1(liveL2s: L2[], gender: Gender): Promise<Map<s
   }>(sql`
     SELECT DISTINCT ON (category_l1) category_l1, category_l2, brand, product_name, image_url, value_score, sale_price
     FROM ${products}
-    WHERE gender = ${gender} AND active AND in_stock AND image_url IS NOT NULL AND value_score IS NOT NULL
+    WHERE gender = ${gender} AND source = 'crawl' AND active AND in_stock AND image_url IS NOT NULL AND value_score IS NOT NULL
       AND category_l2 IN (${sql.join(liveL2s.map((l) => sql`${l}`), sql`, `)})
     ORDER BY category_l1, value_score DESC, sale_price ASC
   `);
