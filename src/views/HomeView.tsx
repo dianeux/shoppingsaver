@@ -25,6 +25,9 @@ export async function HomeView({ gender }: { gender: Gender }) {
           <p>
             預設依<strong className="text-ink font-medium">性價比</strong>排序：材質分（天然 1.0、再生纖維素 0.5、合成 0）和同品類內的價格百分位各佔一半。權重可以自己調。
           </p>
+          <p className="text-sm">
+            想比較 Uniqlo、GU、Zara、H&amp;M？<Link href="/add" className="underline underline-offset-2 hover:text-ink">用書籤小工具把商品加進來 →</Link>
+          </p>
           <SiteNotice {...status} />
         </div>
       </section>

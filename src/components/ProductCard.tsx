@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { BRANDS } from "@/domain/brands";
 import { COLOR_FAMILY_LABEL } from "@/domain/colors";
 import { genderPath } from "@/domain/gender";
@@ -106,8 +107,32 @@ export function ProductCard({
         <p className={`mt-2 text-xs leading-relaxed ${materialMissing ? "text-warn" : "text-ink-soft"}`}>
           {materialMissing ? STATUS_COPY[p.compositionStatus as keyof typeof STATUS_COPY] : p.compositionText}
         </p>
+        {p.submitted && <SubmittedNote id={p.id} confirmedOn={p.submitted.confirmedOn} />}
       </div>
     </article>
   );
 }
 
+
+/** User-submitted products aren't re-checked nightly: say so, and let visitors report them gone. */
+function SubmittedNote({ id, confirmedOn }: { id: string; confirmedOn: string }) {
+  const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
+  const [, m, d] = confirmedOn.split("-").map(Number);
+  async function report() {
+    setState("sending");
+    const r = await fetch("/api/submissions/report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }).catch(() => null);
+    setState(r?.ok ? "done" : "error");
+  }
+  return (
+    <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2 text-xs text-ink-soft">
+      <span title="這件商品由訪客用書籤小工具加入，不會每晚自動更新">用戶提供・價格確認於 {m}/{d}</span>
+      {state === "done" ? (
+        <span>已回報，謝謝</span>
+      ) : (
+        <button type="button" onClick={report} disabled={state === "sending"} className="underline underline-offset-2 hover:text-ink">
+          {state === "error" ? "回報失敗，再試一次" : "回報已下架"}
+        </button>
+      )}
+    </p>
+  );
+}
