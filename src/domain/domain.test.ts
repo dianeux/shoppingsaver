@@ -171,3 +171,17 @@ describe("colorFamily", () => {
     ["Skywriting", "blue"],
   ])("%s → %s", (raw, fam) => expect(colorFamily(raw)).toBe(fam));
 });
+
+describe("colorFamily — brand color names checked against swatches", () => {
+  it.each([
+    ["Ricky", "blue"], ["Diamond Stone", "blue"], ["Mayfly", "green"], ["Olivine", "green"],
+    ["Americano", "brown"], ["Toasted Coconut", "beige"], ["Uniform / Toasted Coconut / Athletic", "beige"],
+    ["Velvet Morning Garment Dye", "purple"], ["Eggnog", "white"], ["Storm", "gray"],
+    ["Wavecrest", "navy"], ["Winetasting", "red"], ["Tonal Waves", "pattern"],
+  ] as const)("%s → %s", (raw, family) => expect(colorFamily(raw)).toBe(family));
+
+  it("matches bare brand names only as the whole name", () => {
+    expect(colorFamily("Storm Blue")).toBe("blue");
+    expect(colorFamily("Stone Gray")).toBe("gray");
+  });
+});

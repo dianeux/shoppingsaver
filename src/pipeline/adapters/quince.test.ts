@@ -107,3 +107,9 @@ describe("mapQuinceCategory", () => {
     expect(m("Leather Belt", "Accessories", "Leather", "Belts")).toBeNull();
   });
 });
+
+describe("mapQuinceCategory — swimwear outside the Swimwear department", () => {
+  it("excludes men's swim trunks filed under Bottoms", () => {
+    expect(mapQuinceCategory('Italian Swim Trunks - 7"', { department: "Bottoms", subdepartment: "Shorts", class: "Shorts" })).toEqual({ excluded: "swimwear" });
+  });
+});

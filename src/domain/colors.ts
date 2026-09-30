@@ -30,7 +30,11 @@ export const COLOR_FAMILY_LABEL: Record<ColorFamily, { label: string; swatch: st
 const RULES: [RegExp, ColorFamily][] = [
   [/\b(stripe[sd]?|striped|border|check(ed)?|plaid|gingham|print(ed)?|floral|dot(s|ted)?|pattern|leopard|camo|multi|houndstooth|argyle|tie[- ]?dye|jacquard|paisley|ditsy|spots|flora|petals?|leaves|patch)\b/, "pattern"],
   // Brand print names that don't say "print" (checked against the swatch image).
-  [/\b(dayspring|contrast|grain|stems|diamonds)\b/, "pattern"],
+  [/\b(dayspring|contrast|grain|stems|diamonds|diamond geo|tonal waves)\b/, "pattern"],
+  // Brand color names that don't name a color (checked against the swatch image).
+  [/\b(ricky|longbay|diamond stone)\b/, "blue"], // Everlane denim washes
+  [/\bvelvet morning\b/, "purple"],
+  [/\btoasted coconut\b/, "beige"],
   [/\b(navy|midnight|indigo|dark blue|marine|admiral|night)\b/, "navy"],
   [/\b(off[- ]?white|ivory|cream|ecru|kinari|natural|snow|chalk|bone|vanilla|porcelain|whiteout|frost|ermine|gardenia|salt|white)\b/, "white"],
   [/\b(charcoal|heather|gr[ae]y|silver|ash|slate|graphite|smoke|smoky gray|stone gray|cinder|flagstone|coal|shale|greyed|soot|tungsten|graystone|heathered|meteorite|chinchilla)\b/, "gray"],
@@ -46,9 +50,25 @@ const RULES: [RegExp, ColorFamily][] = [
   [/\b(orange|terracotta|apricot|tangerine|coral|pumpkin|copper|amber)\b/, "orange"],
 ];
 
+/**
+ * Brand color names that only count as the whole name (checked against the swatch
+ * image): "Storm" is gray, but "Storm Blue" still goes through the rules.
+ */
+const EXACT: Record<string, ColorFamily> = {
+  mayfly: "green", overland: "green", olivine: "green", chive: "green", trellis: "green",
+  forager: "brown", americano: "brown",
+  abalone: "beige", sandshell: "beige", dune: "beige", stone: "beige",
+  eggnog: "white", alabaster: "white",
+  storm: "gray", gravel: "gray",
+  wavecrest: "navy",
+  winetasting: "red",
+};
+
 /** Returns null when no rule matches; callers log these to tune the rules (target ≥ 90% accuracy). */
 export function colorFamily(raw: string): ColorFamily | null {
   const name = raw.toLowerCase().replace(/[_/]+/g, " ");
+  const exact = EXACT[name.replace(/\s+/g, " ").trim()];
+  if (exact) return exact;
   for (const [re, fam] of RULES) if (re.test(name)) return fam;
   return null;
 }
