@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "我的最愛" };
 /** The list itself lives in this browser (localStorage); the page fetches current prices for it. */
 export default function FavoritesPage() {
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
+    <div className="mx-auto lg:max-w-[90vw] px-4 sm:px-6 py-8">
       <h1 className="font-display text-5xl sm:text-6xl leading-none mb-3">
         我的<em className="text-madder">最愛</em>
       </h1>

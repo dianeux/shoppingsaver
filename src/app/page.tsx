@@ -15,22 +15,13 @@ export default async function Home() {
   const groups = HOME_L1.map((l1) => TAXONOMY.find((g) => g.l1 === l1)!);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6">
-      <section className="pt-12 pb-10 sm:pt-20 sm:pb-14 grid lg:grid-cols-[1.5fr_1fr] gap-10 items-end border-b border-rule">
-        <div className="rise">
-          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-faint mb-4">
-            {ACTIVE_BRAND_IDS.map((b) => BRANDS[b].name).join(" · ")}
-          </p>
-          <h1 className="font-display text-[clamp(34px,6vw,68px)] leading-[1.02] tracking-tight [word-break:keep-all]">
-            不是找最低價，
-            <br />
-            <em className="text-indigo">是看清楚</em>每個價格帶
-            <br />
-            買到什麼。
-          </h1>
-        </div>
-        <div className="rise space-y-4 text-[15px] leading-relaxed text-ink-soft" style={{ animationDelay: "120ms" }}>
-          <p>{ACTIVE_BRAND_IDS.length} 個基本款品牌的女裝，材質、顏色、尺寸寫法統一，放在同一頁比較。</p>
+    <div className="mx-auto lg:max-w-[90vw] px-4 sm:px-6">
+      <section className="rise pt-10 pb-8 sm:pt-14 sm:pb-10 border-b border-rule space-y-3">
+        <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-faint">
+          {ACTIVE_BRAND_IDS.map((b) => BRANDS[b].name).join(" · ")}
+        </p>
+        <h1 className="text-lg text-ink">價格和材質之間的取捨，找出 CP 值最高的衣服。</h1>
+        <div className="max-w-2xl space-y-3 text-[15px] leading-relaxed text-ink-soft">
           <p>
             預設依<strong className="text-ink font-medium">性價比</strong>排序：材質分（天然 1.0、再生纖維素 0.5、合成 0）和同品類內的價格百分位各佔一半。權重可以自己調。
           </p>
@@ -88,20 +79,13 @@ function CategoryCard({
       {cover && img ? (
         <Link
           href={`/g/${l1}`}
-          className="group relative block aspect-[4/5] overflow-hidden bg-cloth-deep border border-rule/70"
+          className="group relative block aspect-[4/5] overflow-hidden bg-cloth-deep"
           aria-label={`看全部 ${name}（性價比最高：${BRANDS[cover.brand].name} ${cover.name}）`}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={img} alt="" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]" />
-          <div className="absolute right-3 top-0 flex flex-col items-center">
-            <span className="block w-px h-3 bg-ink/50" />
-            <div className="stitch bg-paper/95 border border-ink/15 px-2.5 pt-1.5 pb-2 min-w-[52px] text-center shadow-[0_6px_14px_-8px_rgba(28,26,23,.5)] rotate-[2deg] group-hover:rotate-0 transition-transform">
-              <div className="font-mono text-[9px] tracking-[0.18em] text-ink-faint">VALUE</div>
-              <div className="font-display text-[28px] leading-none tabular-nums">{cover.valueScore}</div>
-            </div>
-          </div>
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/75 via-ink/30 to-transparent pt-16 pb-3 px-3 text-paper">
-            <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-paper/75">性價比最高</p>
+            <p className="text-[11px] uppercase tracking-[0.14em] text-paper/90">性價比最高</p>
             <p className="text-[13px] leading-snug line-clamp-1">
               {BRANDS[cover.brand].name} · {cover.name}
             </p>
@@ -109,7 +93,7 @@ function CategoryCard({
           </div>
         </Link>
       ) : (
-        <div className="aspect-[4/5] stitch bg-cloth-deep/60 border border-rule grid place-items-center p-6 text-center">
+        <div className="aspect-[4/5] bg-cloth-deep grid place-items-center p-6 text-center">
           <p className="text-xs text-ink-faint leading-relaxed">還沒有品類達到上線門檻</p>
         </div>
       )}
