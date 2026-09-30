@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseQuery, scoreProduct, type SearchableProduct } from "./search";
+import { editDistance, parseQuery, scoreProduct, type SearchableProduct } from "./search";
 
 const product = (name: string, over: Partial<SearchableProduct> = {}): SearchableProduct => ({
   brand: "everlane", l2: "tshirts", name, description: "", colorFamilies: ["white"], salePrice: 30,
@@ -85,5 +85,32 @@ describe("scoreProduct", () => {
     expect(scoreProduct(product("Scoop Neck Tee", { colorFamilies: ["black"] }), q)).toBeNull();
     expect(scoreProduct(product("Scoop Neck Tee", { salePrice: 58 }), q)).toBeNull();
     expect(scoreProduct(product("Scoop Neck Tee", { fibers: [{ fiber: "cotton", percentage: 60 }, { fiber: "polyester", percentage: 40 }] }), q)).toBeNull();
+  });
+});
+
+describe("spelling correction", () => {
+  it("reads a misspelled phrase as the lexicon term", () => {
+    const q = parseQuery("sweat paints");
+    expect(q.styles.map((s) => s.label)).toEqual(["棉褲"]);
+    expect(q.keywords).toEqual([]);
+    expect(q.corrections).toEqual([{ from: "paints", to: "pants" }]);
+  });
+
+  it("fixes single typos and transpositions in category, color and fiber words", () => {
+    expect(parseQuery("pnats").categories.map((c) => c.label)).toEqual(["長褲"]);
+    expect(parseQuery("blak tee").colors.map((c) => c.label)).toEqual(["黑"]);
+    expect(parseQuery("linnen shirt").fibers.map((f) => f.label)).toEqual(["亞麻"]);
+  });
+
+  it("leaves real words the lexicon doesn't know alone", () => {
+    const q = parseQuery("waffle tee");
+    expect(q.keywords).toEqual(["waffle"]);
+    expect(q.corrections).toEqual([]);
+  });
+
+  it("measures edits with transpositions", () => {
+    expect(editDistance("paints", "pants")).toBe(1);
+    expect(editDistance("pnats", "pants")).toBe(1);
+    expect(editDistance("tee", "tee")).toBe(0);
   });
 });

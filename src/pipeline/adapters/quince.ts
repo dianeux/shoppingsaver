@@ -1,18 +1,23 @@
 import { createHash, randomUUID } from "node:crypto";
+import type { Gender } from "@/domain/gender";
 import { brandPostJson, brandText } from "../fetcher";
 import { htmlToText } from "../html";
 import type { BrandAdapter, RawProduct, RawVariant } from "../types";
 import { mapQuinceCategory, QUINCE_MAPPING_VERSION, type QuinceClassification } from "./quince-mapping";
 
 /**
- * Quince is a Next.js storefront. The women's apparel collection page renders
+ * Quince is a Next.js storefront. Each section's apparel collection page renders
  * its first 30 cards server-side and pages the rest from the site's own
  * presentation-layer API (the same call the page makes on scroll). The listing
  * has classification, colors, price and per-color availability; fiber content
  * lives only on the product page, which is fetched just for new/changed products.
  */
 const ORIGIN = "https://www.quince.com";
-const COLLECTION = "/shop/women/apparel";
+/** Each section's apparel collection and the listing's gender value for it. */
+const SECTIONS: { gender: Gender; collection: string; listingGender: string }[] = [
+  { gender: "women", collection: "/shop/women/apparel", listingGender: "female" },
+  { gender: "men", collection: "/shop/men/apparel", listingGender: "male" },
+];
 const WIDGET_API = "https://api-prod-public.onequince.com/presentation-layer-service/widgets/fetch/v1";
 const PAGE_SIZE = 100;
 /** Fallback when the collection page doesn't expose its sort config. */
@@ -65,8 +70,8 @@ function findObject<T>(root: unknown, pred: (o: Record<string, unknown>) => bool
 const items = (w: { children?: ProductListWidget["children"] }) =>
   (w.children ?? []).map((c) => c.data?.productItem).filter((p): p is QuinceProductItem => !!p);
 
-async function fetchListing(): Promise<QuinceProductItem[]> {
-  const html = await brandText("quince", `${ORIGIN}${COLLECTION}`);
+async function fetchListing(collection: string): Promise<QuinceProductItem[]> {
+  const html = await brandText("quince", `${ORIGIN}${collection}`);
   const widget = findObject<ProductListWidget>(nextData(html), (o) => o.type === "PRODUCT_LIST" && typeof o.widgetId === "string");
   if (!widget) throw new Error("Quince: product list widget not found on collection page");
   const baseSortBy = html.match(/baseSortBy\\?"\s*:\s*\\?"(CLP_[A-Z0-9_]+)/)?.[1] ?? DEFAULT_BASE_SORT;
@@ -80,7 +85,7 @@ async function fetchListing(): Promise<QuinceProductItem[]> {
       WIDGET_API,
       {
         id: widget.widgetId,
-        slug: COLLECTION,
+        slug: collection,
         device: { platform: "DWEB" },
         type: "PRODUCT_LIST",
         user: { lbUserId },
@@ -117,10 +122,10 @@ export interface QuinceGroup {
   colors: Map<string, QuinceCardVariant>;
 }
 
-export function groupItems(list: QuinceProductItem[]): QuinceGroup[] {
+export function groupItems(list: QuinceProductItem[], listingGender = "female"): QuinceGroup[] {
   const groups = new Map<string, QuinceGroup>();
   for (const item of list) {
-    if (item.gender !== "female") continue;
+    if (item.gender !== listingGender) continue;
     const g = groups.get(item.productId) ?? { item, colors: new Map() };
     for (const cv of item.cardVariants) if (!g.colors.has(cv.displayConfig.value)) g.colors.set(cv.displayConfig.value, cv);
     groups.set(item.productId, g);
@@ -128,7 +133,7 @@ export function groupItems(list: QuinceProductItem[]): QuinceGroup[] {
   return [...groups.values()];
 }
 
-export function toRawProduct({ item, colors }: QuinceGroup): RawProduct {
+export function toRawProduct({ item, colors }: QuinceGroup, gender: Gender = "women"): RawProduct {
   const c = item.classification ?? {};
   const mapping = mapQuinceCategory(item.title, c);
   const variants: RawVariant[] = [...colors.values()].map((cv) => ({
@@ -152,7 +157,7 @@ export function toRawProduct({ item, colors }: QuinceGroup): RawProduct {
     sourceCategory: [c.department, c.subdepartment, c.class].filter(Boolean).join(" / "),
     l2: mapping && "l2" in mapping ? mapping.l2 : null,
     excluded: !!mapping && "excluded" in mapping,
-    isWomen: true,
+    gender,
     variants,
     tags: [c.department, c.subdepartment, c.class].filter((x): x is string => !!x),
     compositionText: null,
@@ -222,7 +227,9 @@ export const quinceAdapter: BrandAdapter = {
   mappingVersion: QUINCE_MAPPING_VERSION,
 
   async *list() {
-    for (const g of groupItems(await fetchListing())) yield toRawProduct(g);
+    for (const { gender, collection, listingGender } of SECTIONS) {
+      for (const g of groupItems(await fetchListing(collection), listingGender)) yield toRawProduct(g, gender);
+    }
   },
 
   async fetchDetail(p) {

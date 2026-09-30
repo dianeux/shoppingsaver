@@ -1,12 +1,14 @@
 import type { BrandId } from "@/domain/brands";
 import type { ColorFamily } from "@/domain/colors";
 import type { CompositionStatus } from "@/domain/composition";
+import type { Gender } from "@/domain/gender";
 import type { L2 } from "@/domain/taxonomy";
 
 /** What the browse UI receives per product — enough to filter, sort and rescore client-side. */
 export interface CardProduct {
   id: string;
   brand: BrandId;
+  gender: Gender;
   name: string;
   url: string;
   imageUrl: string | null;

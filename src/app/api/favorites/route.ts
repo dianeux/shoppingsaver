@@ -1,7 +1,7 @@
 import { productsByIds } from "@/lib/catalog";
 
-/** Ids look like "everlane:2437"; anything else is ignored. */
-const ID = /^[a-z]+:[\w.-]{1,64}$/;
+/** Ids look like "everlane:2437" (women's) or "everlane:men:2437"; anything else is ignored. */
+const ID = /^[a-z]+:(men:)?[\w.-]{1,64}$/;
 const MAX_IDS = 500;
 
 /** POST { ids: string[] } → the current data for those favorites (browser-held list, no account). */

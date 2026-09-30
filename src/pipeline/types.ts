@@ -1,4 +1,5 @@
 import type { BrandId } from "@/domain/brands";
+import type { Gender } from "@/domain/gender";
 import type { L2 } from "@/domain/taxonomy";
 
 export interface RawVariant {
@@ -26,7 +27,8 @@ export interface RawProduct {
   l2: L2 | null;
   /** True when the mapping table deliberately leaves this category out (e.g. gloves). */
   excluded: boolean;
-  isWomen: boolean;
+  /** Catalog section; null = outside both (kids, home…). */
+  gender: Gender | null;
   variants: RawVariant[];
   tags: string[];
   /** Composition text if the listing already carries it (saves a detail request). */

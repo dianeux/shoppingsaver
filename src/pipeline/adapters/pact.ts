@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { GENDERS, type Gender } from "@/domain/gender";
 import { brandPostForm } from "../fetcher";
 import type { BrandAdapter, RawProduct, RawVariant } from "../types";
 import { mapPactCategory, PACT_MAPPING_VERSION } from "./pact-mapping";
@@ -6,9 +7,9 @@ import { mapPactCategory, PACT_MAPPING_VERSION } from "./pact-mapping";
 /**
  * Pact runs its own storefront (not Shopify). Product pages hydrate from an XHR
  * form post to /controller/product; asking for a whole "parent" (apparel,
- * underwear, clearance) without a category returns every women's style with
- * colorways, per-size stock and price, and fiber content — so three requests
- * cover the catalog and no per-product page fetch is needed.
+ * underwear, clearance) for a gender without a category returns every style with
+ * colorways, per-size stock and price, and fiber content — so three requests per
+ * section cover the catalog and no per-product page fetch is needed.
  */
 const ORIGIN = "https://wearpact.com";
 const PARENTS = ["apparel", "underwear", "clearance"] as const;
@@ -76,11 +77,11 @@ export interface PactGroup {
  * Merge a style's regular and clearance listings (same style code) into one
  * product, and keep multipacks/sets apart — they share the code but not the price basis.
  */
-export function groupStyles(styles: Record<string, PactStyle>): { groups: PactGroup[]; excluded: { key: string; reason: string }[] } {
+export function groupStyles(styles: Record<string, PactStyle>, gender: Gender = "women"): { groups: PactGroup[]; excluded: { key: string; reason: string }[] } {
   const groups = new Map<string, PactGroup>();
   const excluded: { key: string; reason: string }[] = [];
   for (const [key, style] of Object.entries(styles)) {
-    const cws = colorways(style).filter((c) => c.gender === "women");
+    const cws = colorways(style).filter((c) => c.gender === gender);
     if (!cws.length) continue;
     const first = cws[0];
     const mapping = mapPactCategory({
@@ -107,7 +108,7 @@ export function groupStyles(styles: Record<string, PactStyle>): { groups: PactGr
   return { groups: [...groups.values()], excluded };
 }
 
-export function toRawProduct(g: PactGroup): RawProduct {
+export function toRawProduct(g: PactGroup, gender: Gender = "women"): RawProduct {
   const regularKey = g.keys[0];
   // Prefer the regular listing's default colorway for name, URL, category and fiber content.
   const regular = g.colorways.filter((c) => (c.tracking?.url ?? "").includes(`/${regularKey}/`));
@@ -135,7 +136,7 @@ export function toRawProduct(g: PactGroup): RawProduct {
 
   const compositionText = lead.fiber?.length ? lead.fiber.join(", ") : lead.fabric;
   const name = titleCase(baseName(regularKey));
-  const url = lead.tracking?.url ? encodeURI(https(lead.tracking.url)) : `${ORIGIN}/women`;
+  const url = lead.tracking?.url ? encodeURI(https(lead.tracking.url)) : `${ORIGIN}/${gender}`;
   const hash = createHash("sha1")
     .update(JSON.stringify([EXTRACTOR_VERSION, name, [...categories].sort(), compositionText, lead.collectionCode]))
     .digest("hex");
@@ -149,7 +150,7 @@ export function toRawProduct(g: PactGroup): RawProduct {
     sourceCategory: `${categories.filter((c) => !c.startsWith("all ") && c !== "new to sale").join(", ")} [${lead.collectionCode ?? "no collection"}]`,
     l2: mapping && "l2" in mapping ? mapping.l2 : null,
     excluded: false,
-    isWomen: true,
+    gender,
     variants,
     tags: [...categories, ...(lead.collectionCode ? [lead.collectionCode] : []), ...(g.keys.some((k) => /^clearance/i.test(k)) ? ["clearance"] : [])],
     compositionText: compositionText ?? null,
@@ -159,16 +160,16 @@ export function toRawProduct(g: PactGroup): RawProduct {
   };
 }
 
-async function fetchParent(parent: string): Promise<Record<string, PactStyle>> {
+async function fetchParent(parent: string, gender: Gender): Promise<Record<string, PactStyle>> {
   const res = await brandPostForm<PactResponse>("pact", `${ORIGIN}/controller/product`, {
     action: "get",
-    gender: "women",
+    gender,
     parent,
     category: "",
     style: "",
     pid: "",
   });
-  if (res.status !== "success") throw new Error(`Pact ${parent}: status ${res.status}`);
+  if (res.status !== "success") throw new Error(`Pact ${gender} ${parent}: status ${res.status}`);
   // An empty listing comes back as [] rather than {}.
   return Array.isArray(res.data) ? {} : res.data;
 }
@@ -178,17 +179,19 @@ export const pactAdapter: BrandAdapter = {
   mappingVersion: PACT_MAPPING_VERSION,
 
   async *list() {
-    const styles: Record<string, PactStyle> = {};
-    for (const parent of PARENTS) Object.assign(styles, await fetchParent(parent));
-    const { groups, excluded } = groupStyles(styles);
-    for (const e of excluded) {
-      yield {
-        brand: "pact", sourceId: `excluded:${e.key}`, name: e.key, url: ORIGIN, imageUrl: null,
-        sourceCategory: e.reason, l2: null, excluded: true, isWomen: true, variants: [], tags: [],
-        compositionText: null, description: "", contentHash: "", attrs: {},
-      } satisfies RawProduct;
+    for (const gender of GENDERS) {
+      const styles: Record<string, PactStyle> = {};
+      for (const parent of PARENTS) Object.assign(styles, await fetchParent(parent, gender));
+      const { groups, excluded } = groupStyles(styles, gender);
+      for (const e of excluded) {
+        yield {
+          brand: "pact", sourceId: `excluded:${e.key}`, name: e.key, url: ORIGIN, imageUrl: null,
+          sourceCategory: e.reason, l2: null, excluded: true, gender, variants: [], tags: [],
+          compositionText: null, description: "", contentHash: "", attrs: {},
+        } satisfies RawProduct;
+      }
+      for (const g of groups) yield toRawProduct(g, gender);
     }
-    for (const g of groups) yield toRawProduct(g);
   },
 
   // Fiber content arrives with the listing; there is no detail page to fetch.

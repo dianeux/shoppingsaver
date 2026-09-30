@@ -5,6 +5,7 @@ import { crawlRuns, priceSnapshots, products, type CrawlStats, type ProductColor
 import { colorFamily } from "@/domain/colors";
 import { dominantFiber, materialScore } from "@/domain/composition";
 import { isBrandId, type BrandId } from "@/domain/brands";
+import { productId } from "@/domain/gender";
 import { L2_INDEX } from "@/domain/taxonomy";
 import { normalizeSize, sortSizes } from "@/domain/sizes";
 import { everlaneAdapter } from "./adapters/everlane";
@@ -93,7 +94,7 @@ async function runBrand(adapter: BrandAdapter, budget: LlmBudget): Promise<void>
 
     for await (const raw of adapter.list()) {
       stats.listed++;
-      if (!raw.isWomen) {
+      if (!raw.gender) {
         stats.skippedNonWomen++;
         continue;
       }
@@ -108,7 +109,7 @@ async function runBrand(adapter: BrandAdapter, budget: LlmBudget): Promise<void>
       }
       if (raw.variants.length === 0) continue;
 
-      const id = `${brand}:${raw.sourceId}`;
+      const id = productId(brand, raw.sourceId, raw.gender);
       seen.push(id);
       const prev = existing.get(id);
 
@@ -149,6 +150,7 @@ async function runBrand(adapter: BrandAdapter, budget: LlmBudget): Promise<void>
         id,
         brand,
         sourceId: raw.sourceId,
+        gender: raw.gender,
         productName: raw.name,
         productUrl,
         imageUrl: raw.imageUrl,

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { Gender } from "@/domain/gender";
 import { htmlToText } from "../html";
 import type { BrandAdapter, RawProduct } from "../types";
 import { EVERLANE_MAPPING_VERSION, mapEverlaneCategory } from "./everlane-mapping";
@@ -11,7 +12,11 @@ import { listShopifyCollection, shopifyVariants, ShopifyProductPage, type Shopif
  * "Materials & Care" accordion.
  */
 const ORIGIN = "https://www.everlane.com";
-const COLLECTION = "womens-all";
+/** Each section's all-clothing collection, and the tag that marks its products. */
+const SECTIONS: { gender: Gender; collection: string; tag: string }[] = [
+  { gender: "women", collection: "womens-all", tag: "female" },
+  { gender: "men", collection: "shop-all-mens-clothing", tag: "male" },
+];
 
 /** Bump when extraction logic changes so stored results are re-extracted. */
 const EXTRACTOR_VERSION = "everlane-extract-1";
@@ -34,17 +39,17 @@ export function splitTitle(title: string): { name: string; color: string } {
  * collection keeps thousands of retired colorways around, and a product that
  * disappears this way is simply deactivated (it comes back when restocked).
  */
-export function groupColorways(list: ShopifyProduct[]): ShopifyProduct[][] {
+export function groupColorways(list: ShopifyProduct[], genderTag = "female"): ShopifyProduct[][] {
   const groups = new Map<string, ShopifyProduct[]>();
   for (const p of list) {
-    if (!p.tags.includes("female")) continue;
+    if (!p.tags.includes(genderTag)) continue;
     const key = tagValue(p, "product group") ?? p.handle;
     groups.set(key, [...(groups.get(key) ?? []), p]);
   }
   return [...groups.values()].filter((g) => g.some((p) => p.variants.some((v) => v.available)));
 }
 
-export function toRawProduct(group: ShopifyProduct[]): RawProduct {
+export function toRawProduct(group: ShopifyProduct[], gender: Gender = "women"): RawProduct {
   // Lead with an in-stock colorway: its page and image represent the product.
   const lead = group.find((p) => p.variants.some((v) => v.available)) ?? group[0];
   const { name } = splitTitle(lead.title);
@@ -65,7 +70,7 @@ export function toRawProduct(group: ShopifyProduct[]): RawProduct {
     sourceCategory: `${lead.product_type || "(no type)"} / ${subcategory ?? "(no subcategory)"}`,
     l2: mapping && "l2" in mapping ? mapping.l2 : null,
     excluded: !!mapping && "excluded" in mapping,
-    isWomen: true,
+    gender,
     variants,
     tags: lead.tags.filter((t) => /^(category|subcategory|fabric):/i.test(t)),
     compositionText: null,
@@ -91,9 +96,11 @@ export const everlaneAdapter: BrandAdapter = {
   mappingVersion: EVERLANE_MAPPING_VERSION,
 
   async *list() {
-    const all: ShopifyProduct[] = [];
-    for await (const p of listShopifyCollection("everlane", ORIGIN, COLLECTION)) all.push(p);
-    for (const g of groupColorways(all)) yield toRawProduct(g);
+    for (const { gender, collection, tag } of SECTIONS) {
+      const all: ShopifyProduct[] = [];
+      for await (const p of listShopifyCollection("everlane", ORIGIN, collection)) all.push(p);
+      for (const g of groupColorways(all, tag)) yield toRawProduct(g, gender);
+    }
   },
 
   async fetchDetail(p) {

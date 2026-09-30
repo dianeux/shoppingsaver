@@ -50,7 +50,8 @@ const LEXICON: [string[], Entry][] = [
   [["大衣", "風衣", "coat", "coats", "trench"], category("大衣", ["coats"])],
   [["羽絨", "羽絨衣", "鋪棉", "puffer", "down jacket"], category("羽絨與鋪棉", ["down-padded"])],
   [["牛仔褲", "jeans", "denim"], category("牛仔褲", ["jeans"])],
-  [["長褲", "褲子", "褲", "pants", "trousers"], category("長褲", ["pants", "jeans"])],
+  [["長褲", "褲子", "褲", "pants", "pant", "trousers", "trouser"], category("長褲", ["pants", "jeans"])],
+  [["棉褲", "衛褲", "sweatpants", "sweatpant", "sweat pants", "sweat pant"], style("棉褲", ["sweatpant", "sweat pant", "jogger", "fleece pant"])],
   [["裙子", "裙", "半身裙", "skirt", "skirts", "skort"], category("裙子", ["skirts"])],
   [["短褲", "shorts"], category("短褲", ["shorts"])],
   [["洋裝", "連身裙", "dress", "dresses"], category("洋裝", ["dresses"])],
@@ -156,6 +157,8 @@ export interface ParsedQuery {
   keywords: string[];
   /** Leftover text the lexicon doesn't know (e.g. Chinese words not in it). */
   unknown: string[];
+  /** Misspelled English words that were read as a lexicon word ("paints" → "pants"). */
+  corrections: { from: string; to: string }[];
 }
 
 /** Lowercase, fold full-width characters, and treat hyphens as spaces ("V-Neck" ≈ "v neck"). */
@@ -170,9 +173,50 @@ const PRICE_PATTERNS = [
   /(?:under|below|less than|低於|少於|不到|不超過|<)\s*\$?\s*(\d+(?:\.\d+)?)/,
 ];
 
+/** English words the lexicon knows, for spelling correction. */
+const VOCAB = [...new Set(TERMS.flatMap(({ term }) => (isAscii(term) ? term.split(" ") : [])).filter((w) => /^[a-z]{3,}$/.test(w)))];
+
+/** Edit distance with adjacent transpositions ("pnats" → "pants" is 1). */
+export function editDistance(a: string, b: string): number {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array<number>(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+    }
+  }
+  return d[a.length][b.length];
+}
+
+/** Closest lexicon word for an unknown English word: 1 typo allowed from 4 letters, 2 from 8. */
+function correct(word: string): string | null {
+  if (word.length < 4) return null;
+  const allowed = word.length >= 8 ? 2 : 1;
+  let best: { w: string; d: number } | null = null;
+  for (const w of VOCAB) {
+    if (Math.abs(w.length - word.length) > allowed) continue;
+    const d = editDistance(word, w);
+    if (d <= allowed && (!best || d < best.d)) best = { w, d };
+  }
+  return best?.w ?? null;
+}
+
 export function parseQuery(input: string): ParsedQuery {
+  const first = parseExact(input);
+  // Leftover English words may be typos of lexicon words; re-read the query with them fixed.
+  const corrections = first.keywords
+    .map((from) => ({ from, to: correct(from) }))
+    .filter((c): c is { from: string; to: string } => !!c.to && c.to !== c.from);
+  if (!corrections.length) return first;
+  const fixed = corrections.reduce((q, c) => q.replace(new RegExp(`(?<![a-z0-9])${c.from}(?![a-z0-9])`), c.to), normalize(input));
+  return { ...parseExact(fixed), corrections };
+}
+
+function parseExact(input: string): ParsedQuery {
   let q = ` ${normalize(input)} `;
-  const out: ParsedQuery = { categories: [], styles: [], colors: [], fibers: [], brands: [], priceMax: null, keywords: [], unknown: [] };
+  const out: ParsedQuery = { categories: [], styles: [], colors: [], fibers: [], brands: [], priceMax: null, keywords: [], unknown: [], corrections: [] };
 
   for (const re of PRICE_PATTERNS) {
     const m = q.match(re);
@@ -200,7 +244,7 @@ export function parseQuery(input: string): ParsedQuery {
   }
 
   // "色" / "的" / "款" etc. are glue once the real words are gone.
-  const leftover = q.replace(/女裝|女生|女性|女用|[色的款式件系列有要找想買和與跟或及,，、。.!！?？/+&]|\b(and|or|with|for|the|a|in|women'?s?)\b/g, " ").split(/\s+/).filter(Boolean);
+  const leftover = q.replace(/女裝|女生|女性|女用|男裝|男生|男性|男用|[色的款式件系列有要找想買和與跟或及,，、。.!！?？/+&]|\b(and|or|with|for|the|a|in|women'?s?)\b/g, " ").split(/\s+/).filter(Boolean);
   for (const w of leftover) (isAscii(w) && w.length >= 2 ? out.keywords : out.unknown).push(w);
   return out;
 }

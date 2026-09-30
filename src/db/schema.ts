@@ -4,6 +4,7 @@ import {
 } from "drizzle-orm/pg-core";
 import type { CompositionStatus, Composition } from "@/domain/composition";
 import type { ColorFamily } from "@/domain/colors";
+import type { Gender } from "@/domain/gender";
 
 export interface ProductColor {
   raw: string;
@@ -21,6 +22,8 @@ export const products = pgTable(
     id: text("id").primaryKey(), // `${brand}:${sourceId}`
     brand: text("brand").notNull(),
     sourceId: text("source_id").notNull(),
+    /** Catalog section; percentiles and pages are per gender. */
+    gender: text("gender").$type<Gender>().notNull().default("women"),
     productName: text("product_name").notNull(),
     productUrl: text("product_url").notNull(),
     imageUrl: text("image_url"),
@@ -60,7 +63,7 @@ export const products = pgTable(
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    index("products_l2_idx").on(t.categoryL2, t.active),
+    index("products_l2_idx").on(t.gender, t.categoryL2, t.active),
     index("products_brand_idx").on(t.brand, t.active),
   ],
 );
@@ -80,6 +83,7 @@ export const priceSnapshots = pgTable(
 export interface CrawlStats {
   listed: number;
   kept: number;
+  /** Kids', home and other items outside both sections. */
   skippedNonWomen: number;
   excluded: number;
   soldOut: number;

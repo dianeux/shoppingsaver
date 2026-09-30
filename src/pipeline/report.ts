@@ -3,6 +3,7 @@ import { desc, eq, sql } from "drizzle-orm";
 import { db, pool } from "@/db/client";
 import { crawlRuns, products } from "@/db/schema";
 import { ACTIVE_BRAND_IDS as BRAND_IDS, BRANDS } from "@/domain/brands";
+import { GENDER_LABEL, GENDERS } from "@/domain/gender";
 import { MIN_BRANDS_PER_L2, TAXONOMY } from "@/domain/taxonomy";
 
 /**
@@ -10,21 +11,25 @@ import { MIN_BRANDS_PER_L2, TAXONOMY } from "@/domain/taxonomy";
  * brand, plus the latest per-site quality numbers (PRD ch.4). Markdown on stdout.
  */
 const counts = await db
-  .select({ l2: products.categoryL2, brand: products.brand, n: sql<number>`count(*)::int` })
+  .select({ gender: products.gender, l2: products.categoryL2, brand: products.brand, n: sql<number>`count(*)::int` })
   .from(products)
   .where(eq(products.active, true))
-  .groupBy(products.categoryL2, products.brand);
-const cell = new Map(counts.map((c) => [`${c.l2}|${c.brand}`, c.n]));
+  .groupBy(products.gender, products.categoryL2, products.brand);
+const cell = new Map(counts.map((c) => [`${c.gender}|${c.l2}|${c.brand}`, c.n]));
 
-console.log(`## 目錄重疊表（覆蓋數 ≥ ${MIN_BRANDS_PER_L2} 才上線）\n`);
-console.log(`| L1 | L2 | ${BRAND_IDS.map((b) => BRANDS[b].name).join(" | ")} | 覆蓋數 | 上線 |`);
-console.log(`|${"---|".repeat(BRAND_IDS.length + 4)}`);
-for (const g of TAXONOMY) {
-  for (const c of g.children) {
-    const row = BRAND_IDS.map((b) => cell.get(`${c.l2}|${b}`) ?? 0);
-    const cover = row.filter((n) => n > 0).length;
-    console.log(`| ${g.name} | ${c.name} | ${row.map((n) => (n ? String(n) : "")).join(" | ")} | ${cover} | ${cover >= MIN_BRANDS_PER_L2 ? "✓" : ""} |`);
+for (const gender of GENDERS) {
+  console.log(`## 目錄重疊表・${GENDER_LABEL[gender]}（覆蓋數 ≥ ${MIN_BRANDS_PER_L2} 才上線）\n`);
+  console.log(`| L1 | L2 | ${BRAND_IDS.map((b) => BRANDS[b].name).join(" | ")} | 覆蓋數 | 上線 |`);
+  console.log(`|${"---|".repeat(BRAND_IDS.length + 4)}`);
+  for (const g of TAXONOMY) {
+    for (const c of g.children) {
+      const row = BRAND_IDS.map((b) => cell.get(`${gender}|${c.l2}|${b}`) ?? 0);
+      const cover = row.filter((n) => n > 0).length;
+      if (cover === 0 && gender === "men") continue;
+      console.log(`| ${g.name} | ${c.name} | ${row.map((n) => (n ? String(n) : "")).join(" | ")} | ${cover} | ${cover >= MIN_BRANDS_PER_L2 ? "✓" : ""} |`);
+    }
   }
+  console.log("");
 }
 
 console.log(`\n## 抽取品質（各站最近一次成功執行）\n`);

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Noto_Sans_TC } from "next/font/google";
-import Link from "next/link";
-import { FavoritesLink } from "@/components/FavoritesLink";
+import { SiteHeader } from "@/components/SiteHeader";
 import "./globals.css";
 
 const notoSans = Noto_Sans_TC({ variable: "--font-noto-sans", weight: ["400", "500", "700"], preload: false });
@@ -15,28 +14,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="zh-Hant" className={`${notoSans.variable} antialiased`}>
       <body className="min-h-screen flex flex-col">
-        <header className="border-b border-rule/80 bg-cloth/85 backdrop-blur-sm sticky top-0 z-30">
-          <div className="mx-auto lg:max-w-[90vw] px-4 sm:px-6 h-14 flex items-center gap-6">
-            <Link href="/" className="flex items-baseline gap-2 shrink-0">
-              <span className="font-display text-2xl leading-none tracking-tight">ShoppingSaver</span>
-              <span className="hidden sm:inline font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">women · us</span>
-            </Link>
-            <form action="/search" role="search" className="ml-auto hidden sm:block">
-              <input
-                name="q"
-                placeholder="搜尋：低胸 T恤、寬褲 亞麻…"
-                aria-label="搜尋商品"
-                className="w-56 lg:w-72 border border-rule bg-paper/80 px-3 py-1.5 text-sm focus:outline-none focus:border-ink"
-              />
-            </form>
-            <nav className="ml-auto sm:ml-0 flex items-center gap-5 text-sm">
-              <Link href="/search" className="sm:hidden text-ink-soft hover:text-ink">搜尋</Link>
-              <Link href="/" className="text-ink-soft hover:text-ink">品類</Link>
-              <Link href="/deals" className="text-madder hover:underline underline-offset-4 decoration-1">本週降價</Link>
-              <FavoritesLink />
-            </nav>
-          </div>
-        </header>
+        <SiteHeader />
         <main className="flex-1">{children}</main>
         <footer className="border-t border-rule/80 mt-16">
           <div className="mx-auto lg:max-w-[90vw] px-4 sm:px-6 py-8 text-xs text-ink-faint leading-relaxed flex flex-col sm:flex-row gap-2 sm:justify-between">

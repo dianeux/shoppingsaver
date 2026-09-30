@@ -6,7 +6,7 @@ import type { L2 } from "@/domain/taxonomy";
  * items come with an empty product_type and fall back to the title.
  * Bump the version on any edit.
  */
-export const EVERLANE_MAPPING_VERSION = "everlane-2026-09-27.1";
+export const EVERLANE_MAPPING_VERSION = "everlane-2026-09-29.1";
 
 export type EverlaneMapping = { l2: L2 } | { excluded: string } | null;
 
@@ -51,6 +51,7 @@ export function mapEverlaneCategory(productType: string, subcategory: string | n
     case "Sweaters":
       return { l2: "sweaters-knits" };
     case "Woven Tops":
+    case "Shirting": // men's
       return { l2: "shirts-blouses" };
     case "Bottoms":
       if (sub === "shorts") return { l2: "shorts" };
