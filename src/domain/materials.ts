@@ -20,7 +20,7 @@ export const RECYCLED_SYNTHETIC_COEFFICIENT = 0.0;
 export const ELASTANE_EXEMPT_MAX_PCT = 5;
 
 export type Fiber =
-  | "cotton" | "linen" | "hemp" | "ramie" | "kapok" | "silk" | "wool" | "cashmere" | "alpaca" | "vicuna" | "mohair" | "yak" | "camel" | "down" | "feather" | "leather"
+  | "cotton" | "linen" | "hemp" | "ramie" | "jute" | "kapok" | "silk" | "wool" | "cashmere" | "alpaca" | "vicuna" | "mohair" | "yak" | "camel" | "down" | "feather" | "leather"
   | "lyocell" | "modal" | "cupro" | "viscose" | "acetate" | "triacetate" | "azlon"
   | "polyester" | "elasterell" | "nylon" | "acrylic" | "elastane" | "polypropylene" | "polyethylene" | "polyurethane" | "metallic" | "faux_leather" | "synthetic"
   | "other";
@@ -29,6 +29,7 @@ export const FIBERS: Record<Fiber, { class: FiberClass; label: string; synonyms:
   cotton: { class: "natural", label: "棉", synonyms: ["cotton", "organic cotton", "pima cotton", "supima cotton", "supima", "egyptian cotton"] },
   linen: { class: "natural", label: "亞麻", synonyms: ["linen", "flax", "european flax", "french linen"] },
   hemp: { class: "natural", label: "麻", synonyms: ["hemp"] },
+  jute: { class: "natural", label: "黃麻", synonyms: ["jute"] },
   ramie: { class: "natural", label: "苧麻", synonyms: ["ramie"] },
   kapok: { class: "natural", label: "木棉", synonyms: ["kapok"] },
   silk: { class: "natural", label: "絲", synonyms: ["silk", "mulberry silk"] },
@@ -56,7 +57,7 @@ export const FIBERS: Record<Fiber, { class: FiberClass; label: string; synonyms:
   triacetate: { class: "regenerated", label: "三醋酸纖維", synonyms: ["triacetate"] },
   // FTC generic name for regenerated protein fiber (e.g. soy); natural feedstock, chemical process — same tier as rayon.
   azlon: { class: "regenerated", label: "大豆蛋白纖維", synonyms: ["azlon", "soy fiber", "soybean fiber", "soy protein fiber"] },
-  polyester: { class: "synthetic", label: "聚酯", synonyms: ["polyester", "recycled polyester", "pet", "poly"] },
+  polyester: { class: "synthetic", label: "聚酯", synonyms: ["polyester", "recycled polyester", "pet", "poly", "coolmax", "coolmax ecomade fiber", "coolmax® ecomade fiber"] },
   // FTC generic name for bicomponent stretch polyester (PET/PTT); not spandex, so no exemption.
   elasterell: { class: "synthetic", label: "彈性聚酯", synonyms: ["elasterell-p", "elasterell p", "elasterell", "elastomultiester"] },
   nylon: { class: "synthetic", label: "尼龍", synonyms: ["nylon", "polyamide", "recycled nylon", "recycled polyamide"] },

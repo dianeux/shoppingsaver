@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { BrandAdapter, RawProduct } from "../types";
 import { htmlToText } from "../html";
-import { isMujiWomen, mapMujiCategory, MUJI_MAPPING_VERSION } from "./muji-mapping";
+import { mapMujiCategory, mujiGenders, MUJI_MAPPING_VERSION } from "./muji-mapping";
 import { listShopifyCollection, shopifyVariants, ShopifyProductPage } from "./shopify";
 
 /**
@@ -17,7 +17,11 @@ const EXTRACTOR_VERSION = "muji-extract-2";
  * Filter at the collection level (PRD ch.6): the store is mostly stationery and
  * home goods, so we only ever list apparel collections.
  */
-const COLLECTIONS = ["women", "womens-innerwear", "womens-loungewear", "socks", "winter-accessories"];
+const COLLECTIONS = [
+  "women", "womens-innerwear", "womens-loungewear",
+  "mens", "mens-innerwear", "mens-loungewear",
+  "socks", "winter-accessories", // unisex; gender comes from product type and tags
+];
 
 const productPage = new ShopifyProductPage("muji", ORIGIN, (html) => html.includes("collapsible-tab"));
 
@@ -50,12 +54,13 @@ export const mujiAdapter: BrandAdapter = {
       for await (const p of listShopifyCollection("muji", ORIGIN, handle)) {
         if (seen.has(p.id)) continue;
         seen.add(p.id);
+        const genders = mujiGenders(p.product_type, p.tags);
         const variants = shopifyVariants(p, { url: (v) => `${ORIGIN}/products/${p.handle}?variant=${v.id}` });
         const mapping = mapMujiCategory(p.product_type, p.tags, p.title);
         const hash = createHash("sha1")
           .update(JSON.stringify([EXTRACTOR_VERSION, p.title, p.body_html, p.product_type, [...p.tags].sort(), p.options]))
           .digest("hex");
-        const product: RawProduct = {
+        const product: Omit<RawProduct, "gender"> = {
           brand: "muji",
           sourceId: String(p.id),
           name: p.title,
@@ -64,7 +69,6 @@ export const mujiAdapter: BrandAdapter = {
           sourceCategory: `${p.product_type} [${p.tags.filter((t) => !/^(USA|WK|YCRF|Tax|newMessage|YGroup|Ygroup)/.test(t)).slice(0, 8).join(", ")}]`,
           l2: mapping && "l2" in mapping ? mapping.l2 : null,
           excluded: !!mapping && "excluded" in mapping,
-          isWomen: isMujiWomen(p.product_type, p.tags),
           variants,
           tags: p.tags,
           // body_html sometimes says "100% linen", but that's copy, not the fiber label.
@@ -73,7 +77,7 @@ export const mujiAdapter: BrandAdapter = {
           contentHash: hash,
           attrs: attrsFromTags(p.tags),
         };
-        yield product;
+        for (const gender of genders) yield { ...product, gender };
       }
     }
   },

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { Gender } from "@/domain/gender";
 import { brandJson, brandText } from "../fetcher";
 import type { BrandAdapter, RawProduct, RawVariant } from "../types";
 import { mapOldNavyCategory, OLDNAVY_MAPPING_VERSION } from "./oldnavy-mapping";
@@ -12,8 +13,11 @@ import { mapOldNavyCategory, OLDNAVY_MAPPING_VERSION } from "./oldnavy-mapping";
  */
 const ORIGIN = "https://oldnavy.gap.com";
 const SEARCH_API = "https://api.gap.com/commerce/search/products/v2/cc";
-/** "Shop All Women's". */
-const CATEGORY_ID = "1185233";
+/** "Shop All Women's" / "Shop All Men's". */
+const SECTIONS: { gender: Gender; cid: string }[] = [
+  { gender: "women", cid: "1185233" },
+  { gender: "men", cid: "1031099" },
+];
 const PAGE_SIZE = 300;
 
 /** Bump when extraction logic changes so stored results are re-extracted. */
@@ -42,10 +46,10 @@ export interface OldNavyPage {
   categories: { subCategoryName?: string; ccList?: { ccId: string }[] }[];
 }
 
-async function fetchPages(): Promise<OldNavyPage[]> {
+async function fetchPages(cid: string): Promise<OldNavyPage[]> {
   const pages: OldNavyPage[] = [];
   for (let n = 0, total = 1; n < total && n < 100; n++) {
-    const qs = new URLSearchParams({ cid: CATEGORY_ID, brand: "on", market: "us", locale: "en_US", pageSize: String(PAGE_SIZE), pageNumber: String(n) });
+    const qs = new URLSearchParams({ cid, brand: "on", market: "us", locale: "en_US", pageSize: String(PAGE_SIZE), pageNumber: String(n) });
     const page = await brandJson<OldNavyPage>("oldnavy", `${SEARCH_API}?${qs}`);
     pages.push(page);
     total = Number(page.pagination.pageNumberTotal);
@@ -82,9 +86,9 @@ function cleanName(name: string): string {
   return name.split(/\s+--\s+/)[0].trim();
 }
 
-export function toRawProduct({ style, colors, subCategory }: OldNavyGroup): RawProduct {
+export function toRawProduct({ style, colors, subCategory }: OldNavyGroup, gender: Gender = "women"): RawProduct {
   const name = cleanName(style.styleName);
-  const mapping = mapOldNavyCategory({ name, subCategory, webProductType: style.webProductType ?? null, subBrand: style.subBrand ?? null });
+  const mapping = mapOldNavyCategory({ name, subCategory, webProductType: style.webProductType ?? null, subBrand: style.subBrand ?? null }, gender);
   const variants: RawVariant[] = [...colors.values()].map((c) => {
     const price = Number(c.effectivePrice);
     const regular = Number(c.regularPrice);
@@ -110,7 +114,7 @@ export function toRawProduct({ style, colors, subCategory }: OldNavyGroup): RawP
     sourceCategory: `${subCategory ?? "(no sub-category)"} / ${style.webProductType ?? "(no type)"}`,
     l2: mapping && "l2" in mapping ? mapping.l2 : null,
     excluded: !!mapping && "excluded" in mapping,
-    isWomen: true,
+    gender,
     variants,
     tags: [subCategory, style.webProductType, style.subBrand].filter((x): x is string => !!x),
     compositionText: null,
@@ -142,7 +146,9 @@ export const oldNavyAdapter: BrandAdapter = {
   mappingVersion: OLDNAVY_MAPPING_VERSION,
 
   async *list() {
-    for (const g of groupStyles(await fetchPages())) yield toRawProduct(g);
+    for (const { gender, cid } of SECTIONS) {
+      for (const g of groupStyles(await fetchPages(cid))) yield toRawProduct(g, gender);
+    }
   },
 
   async fetchDetail(p) {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { BRANDS } from "@/domain/brands";
 import { COLOR_FAMILY_LABEL } from "@/domain/colors";
+import { genderPath } from "@/domain/gender";
 import { thumb, usd } from "@/lib/format";
 import type { CardProduct } from "@/lib/types";
 import { FavoriteButton } from "./FavoriteButton";
@@ -59,7 +60,7 @@ export function ProductCard({
       <div className="flex flex-col pt-3 flex-1">
         <div className="flex items-center justify-between gap-2">
           <Link
-            href={`/brand/${p.brand}`}
+            href={genderPath(p.gender, `/brand/${p.brand}`)}
             className="text-xs uppercase tracking-[0.12em] text-ink-soft hover:text-indigo underline-offset-4 hover:underline"
             title={`看 ${BRANDS[p.brand].name} 全品類`}
           >

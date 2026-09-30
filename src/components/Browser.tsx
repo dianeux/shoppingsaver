@@ -5,6 +5,7 @@ import { BRANDS, type BrandId } from "@/domain/brands";
 import { COLOR_FAMILIES, COLOR_FAMILY_LABEL, type ColorFamily } from "@/domain/colors";
 import { FIBERS, type Fiber } from "@/domain/materials";
 import { isEmptyQuery, parseQuery } from "@/domain/search";
+import type { Gender } from "@/domain/gender";
 import { DEFAULT_MATERIAL_WEIGHT } from "@/domain/scoring";
 import { L2_INDEX, type L2 } from "@/domain/taxonomy";
 import type { CardProduct } from "@/lib/types";
@@ -59,7 +60,7 @@ function writeWeight(w: number) {
  * @param facetL2 `true` = sub-category as a multi-select filter (brand / deals pages);
  *   `"switch"` = single-select sub-category switcher with "全部", always visible (L1 group page).
  */
-export function Browser({ products, facetL2 = false }: { products: CardProduct[]; facetL2?: boolean | "switch" }) {
+export function Browser({ products, gender, facetL2 = false }: { products: CardProduct[]; gender: Gender; facetL2?: boolean | "switch" }) {
   // Search results carry a relevance score; elsewhere the in-page search supplies one.
   const isSearchPage = products.some((p) => p.relevance !== undefined);
   const weight = useSyncExternalStore(subscribeWeight, readWeight, () => DEFAULT_MATERIAL_WEIGHT);
@@ -73,7 +74,7 @@ export function Browser({ products, facetL2 = false }: { products: CardProduct[]
   const [shown, setShown] = useState(PAGE);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const { matches, searching, searchFailed } = usePageSearch(query, products, isSearchPage, () => {
+  const { matches, searching, searchFailed } = usePageSearch(query, products, gender, isSearchPage, () => {
     setSort("relevance");
     setShown(PAGE);
   });
@@ -348,19 +349,19 @@ export function Browser({ products, facetL2 = false }: { products: CardProduct[]
  * Search box on browse pages: the same lexicon as the site search, limited to
  * this page's sub-categories. Returns the matching ids (null = no search active).
  */
-function usePageSearch(query: string, products: CardProduct[], disabled: boolean, onResults: () => void) {
+function usePageSearch(query: string, products: CardProduct[], gender: Gender, disabled: boolean, onResults: () => void) {
   const [state, setState] = useState<{ key: string; matches: Map<string, number> | null; failed: boolean }>({ key: "", matches: null, failed: false });
   const parsed = useMemo(() => parseQuery(query), [query]);
   const l2Key = useMemo(() => [...new Set(products.map((p) => p.l2))].sort().join(","), [products]);
-  const key = disabled || isEmptyQuery(parsed) ? "" : `${query.trim()}|${l2Key}`;
+  const key = disabled || isEmptyQuery(parsed) ? "" : `${query.trim()}|${l2Key}|${gender}`;
 
   useEffect(() => {
     if (!key) return;
     const ctrl = new AbortController();
     // Debounced: fire once typing pauses.
     const timer = setTimeout(() => {
-      const [q, l2] = key.split("|");
-      fetch(`/api/search?${new URLSearchParams({ q, l2 })}`, { signal: ctrl.signal })
+      const [q, l2, g] = key.split("|");
+      fetch(`/api/search?${new URLSearchParams({ q, l2, g })}`, { signal: ctrl.signal })
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
         .then(({ matches }: { matches: Record<string, number> }) => {
           setState({ key, matches: new Map(Object.entries(matches)), failed: false });
@@ -408,6 +409,11 @@ function PageSearch({ query, onChange, searching, failed }: { query: string; onC
           {understood.length > 0 && <span className="text-ink-faint mr-1">解讀為</span>}
           {understood.map((label) => (
             <span key={label} className="border border-rule px-2 py-0.5">{label}</span>
+          ))}
+          {parsed.corrections.map((c) => (
+            <span key={c.from} className="border border-rule px-2 py-0.5 text-ink-soft" title="拼字自動修正">
+              已修正：{c.from} → {c.to}
+            </span>
           ))}
           {parsed.unknown.map((u) => (
             <span key={u} className="border border-ochre/50 bg-ochre-wash text-warn px-2 py-0.5" title="詞典裡沒有這個詞，搜尋時略過">

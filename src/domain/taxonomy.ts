@@ -1,6 +1,9 @@
+import type { Gender } from "./gender";
+
 /**
- * Canonical taxonomy (PRD ch.7), women's MVP. Uniqlo's tree is the backbone;
- * brand-specific tech lines (HEATTECH, AIRism…) are attribute tags, never nodes.
+ * Canonical taxonomy (PRD ch.7), shared by the women's and men's sections.
+ * Uniqlo's tree is the backbone; brand-specific tech lines (HEATTECH, AIRism…)
+ * are attribute tags, never nodes.
  * Each L2 is one browse page and the scope of the price percentile.
  */
 export const TAXONOMY = [
@@ -91,11 +94,16 @@ export const L2_INDEX: Record<L2, { l1: L1; name: string; l1Name: string }> = Ob
   TAXONOMY.flatMap((g) => g.children.map((c) => [c.l2, { l1: g.l1, name: c.name, l1Name: g.name }])),
 ) as Record<L2, { l1: L1; name: string; l1Name: string }>;
 
-/** L1 groups shown on the home page, in order. The "extended" group has no card of its own. */
+/** L1 groups shown on a section's home page, in order. The "extended" group has no card of its own. */
 export const HOME_L1: L1[] = ["tops", "outerwear", "bottoms", "dresses", "innerwear", "loungewear", "activewear", "accessories"];
 
-export function isHomeL1(v: string): v is L1 {
-  return (HOME_L1 as string[]).includes(v);
+/** Home groups per section; sub-categories without stock hide themselves (e.g. men's bras). */
+export function homeL1(gender: Gender): L1[] {
+  return gender === "men" ? HOME_L1.filter((l1) => l1 !== "dresses") : HOME_L1;
+}
+
+export function isHomeL1(v: string, gender: Gender = "women"): v is L1 {
+  return (homeL1(gender) as string[]).includes(v);
 }
 
 export function isL2(v: string): v is L2 {

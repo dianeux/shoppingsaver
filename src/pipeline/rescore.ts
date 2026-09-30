@@ -3,9 +3,9 @@ import { db } from "@/db/client";
 import { DEFAULT_MATERIAL_WEIGHT } from "@/domain/scoring";
 
 /**
- * Recompute price percentiles within each L2 across all brands (in-stock
- * products only — sold-out items aren't on the page to compare against), then the
- * default-weight value score. Runs after every brand has loaded, because a new
+ * Recompute price percentiles within each L2 of each section (women's / men's)
+ * across all brands (in-stock products only — sold-out items aren't on the page to
+ * compare against), then the default-weight value score. Runs after every brand has loaded, because a new
  * brand shifts every other product's percentile.
  *
  * Same mid-rank definition as domain/scoring.ts `percentiles`:
@@ -16,9 +16,9 @@ export async function rescoreAll() {
   await db.execute(sql`
     WITH ranked AS (
       SELECT id,
-        ( (rank() OVER (PARTITION BY category_l2 ORDER BY sale_price) - 1)
-          + 0.5 * count(*) OVER (PARTITION BY category_l2, sale_price)
-        )::real / count(*) OVER (PARTITION BY category_l2) AS pct
+        ( (rank() OVER (PARTITION BY gender, category_l2 ORDER BY sale_price) - 1)
+          + 0.5 * count(*) OVER (PARTITION BY gender, category_l2, sale_price)
+        )::real / count(*) OVER (PARTITION BY gender, category_l2) AS pct
       FROM products
       WHERE active AND in_stock
     )

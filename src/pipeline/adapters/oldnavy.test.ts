@@ -46,11 +46,31 @@ describe("mapOldNavyCategory", () => {
     ["Canvas Tote Bag", "Bags & Accessories", "womens accessories", null, "bags"],
   ])("%s → %s", (name, sub, wpt, brand, l2) => expect(m(name, sub, wpt, brand)).toEqual({ l2 }));
 
-  it("excludes dropship sellers, men's merch, footwear, swimwear and non-taxonomy accessories", () => {
+  it("excludes dropship sellers, the other section's items, footwear, swimwear and non-taxonomy accessories", () => {
     expect(m("Peanuts Graphic T-Shirt", "T-Shirts & Tanks", "Dropship")).toEqual({ excluded: "marketplace seller" });
-    expect(m("Buffalo Bills Graphic T-Shirt for Men", "T-Shirts & Tanks", "mens tees")).toEqual({ excluded: "not women's" });
+    expect(m("Buffalo Bills Graphic T-Shirt for Men", "T-Shirts & Tanks", "mens tees")).toEqual({ excluded: "other section" });
+    // The men's listing mixes in women's pieces the same way.
+    expect(mapOldNavyCategory({ name: "Ribbed Tank Top", subCategory: "T-Shirts & Tanks", webProductType: "womens tees", subBrand: null }, "men")).toEqual({ excluded: "other section" });
+    expect(mapOldNavyCategory({ name: "Crew-Neck T-Shirt", subCategory: "T-Shirts & Tanks", webProductType: "mens tees", subBrand: null }, "men")).toEqual({ l2: "tshirts" });
     expect(m("Faux-Suede Ankle Boots", "Shoes", "womens boots")).toEqual({ excluded: "footwear" });
     expect(m("Ribbed Bikini Top", "Swimsuits", "womens swimwear")).toEqual({ excluded: "swimwear" });
     expect(m("Gold-Tone Hoop Earrings", "Bags & Accessories", "womens accessories")).toEqual({ excluded: "accessory outside taxonomy" });
   });
+});
+
+describe("mapOldNavyCategory (men's sub-categories)", () => {
+  const m = (name: string, subCategory: string, webProductType: string) =>
+    mapOldNavyCategory({ name, subCategory, webProductType, subBrand: null }, "men");
+  it.each([
+    ["Soft-Washed Graphic T-Shirt", "Graphic T- Shirts", "mens tees", "tshirts"],
+    ["Pique Polo Shirt", "Polos", "mens tees", "polos"],
+    ["Regular-Fit Oxford Shirt", "Button Downs", "mens shirts", "shirts-blouses"],
+    ["Cozy Crew-Neck Sweater", "Sweaters", "mens sweaters", "sweaters-knits"],
+    ["Logo Tapered Jogger Sweatpants", "Sweatshirts & Sweatpants", "mens sweatpants & sweatshirts", "pants"],
+    ["Oversized Pullover Hoodie", "Sweatshirts & Sweatpants", "mens sweatpants & sweatshirts", "sweatshirts-hoodies"],
+    ["Flannel Pajama Pants", "Pajamas & Loungewear", "mens sleepwear", "pajamas"],
+    ["Soft-Knit Boxer Briefs", "Socks & Underwear", "mens accessories", "underwear"],
+    ["Crew Socks", "Socks & Underwear", "z mens socks", "socks"],
+    ["Canvas Baseball Cap", "Accessories", "z mens hats", "hats"],
+  ])("%s → %s", (name, sub, wpt, l2) => expect(m(name, sub, wpt)).toEqual({ l2 }));
 });

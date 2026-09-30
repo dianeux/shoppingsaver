@@ -6,7 +6,7 @@ import type { L2 } from "@/domain/taxonomy";
  * "pants", "sweatpants"…) plus a collection code. Rules run in order; first match wins.
  * Bump the version on any edit.
  */
-export const PACT_MAPPING_VERSION = "pact-2026-09-27.1";
+export const PACT_MAPPING_VERSION = "pact-2026-09-29.1";
 
 /** Pact's own movement line — its pieces go to the Sports (activewear) group. */
 const ACTIVE_COLLECTIONS = new Set(["W-ONTHGO"]);
@@ -30,7 +30,7 @@ export function mapPactCategory({ name, categories, collectionCode, packSize }: 
   if (has("socks")) return { l2: "socks" };
   if (has("bags & hats")) return { l2: /\b(hat|cap|beanie)\b/.test(title) ? "hats" : "bags" };
   if (has("bras")) return { l2: "bras" };
-  if (has("undies")) return { l2: "underwear" };
+  if (has("undies", "boxers & briefs")) return { l2: "underwear" };
 
   if (collectionCode && ACTIVE_COLLECTIONS.has(collectionCode)) {
     return { l2: has("leggings", "pants", "shorts", "skirts", "all bottoms") ? "active-bottoms" : "active-tops" };
@@ -44,7 +44,8 @@ export function mapPactCategory({ name, categories, collectionCode, packSize }: 
   if (has("hoodies & sweatshirts", "sweatshirts & hoodies")) return { l2: "sweatshirts-hoodies" };
   if (has("sweaters", "cardigans")) return { l2: "sweaters-knits" };
   if (has("jackets")) return { l2: "jackets" };
-  if (has("tees", "tees & tanks")) return { l2: "tshirts" };
+  if (has("polos") || /\bpolo\b/.test(title)) return { l2: "polos" };
+  if (has("tees", "tees & tanks", "tees & henleys")) return { l2: "tshirts" };
   if (has("tops & shirts")) return { l2: "shirts-blouses" };
   return null;
 }

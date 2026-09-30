@@ -4,6 +4,7 @@ import { db } from "@/db/client";
 import { crawlRuns, priceDrops, products } from "@/db/schema";
 import { BRANDS, type BrandId } from "@/domain/brands";
 import { formatComposition, type Composition } from "@/domain/composition";
+import type { Gender } from "@/domain/gender";
 import { scoreProduct, type ParsedQuery } from "@/domain/search";
 import { DROP_WINDOW_DAYS } from "@/pipeline/drops";
 import { MIN_BRANDS_PER_L2, TAXONOMY, type L2 } from "@/domain/taxonomy";
@@ -19,6 +20,7 @@ const STALE_AFTER_HOURS = 36;
 const cardColumns = {
   id: products.id,
   brand: products.brand,
+  gender: products.gender,
   name: products.productName,
   url: products.productUrl,
   imageUrl: products.imageUrl,
@@ -47,6 +49,7 @@ function toCard(r: Row): CardProduct {
   return {
     id: r.id as string,
     brand: r.brand as BrandId,
+    gender: r.gender as Gender,
     name: r.name as string,
     url: r.url as string,
     imageUrl: (r.imageUrl as string | null) ?? null,
@@ -67,23 +70,26 @@ function toCard(r: Row): CardProduct {
   };
 }
 
-export async function productsForL2(l2: L2): Promise<CardProduct[]> {
+/** Listed, in-stock products of one catalog section. */
+const listed = (gender: Gender) => [eq(products.gender, gender), eq(products.active, true), eq(products.inStock, true)];
+
+export async function productsForL2(l2: L2, gender: Gender): Promise<CardProduct[]> {
   const rows = await db
     .select(cardColumns)
     .from(products)
     .leftJoin(priceDrops, eq(priceDrops.productId, products.id))
-    .where(and(eq(products.categoryL2, l2), eq(products.active, true), eq(products.inStock, true)));
+    .where(and(eq(products.categoryL2, l2), ...listed(gender)));
   return rows.map(toCard);
 }
 
 /** Every product in an L1 group, limited to L2 pages that pass the coverage threshold. */
-export async function productsForL1(l1: string, liveL2s: L2[]): Promise<CardProduct[]> {
+export async function productsForL1(l1: string, liveL2s: L2[], gender: Gender): Promise<CardProduct[]> {
   if (liveL2s.length === 0) return [];
   const rows = await db
     .select(cardColumns)
     .from(products)
     .leftJoin(priceDrops, eq(priceDrops.productId, products.id))
-    .where(and(eq(products.categoryL1, l1), eq(products.active, true), eq(products.inStock, true), inArray(products.categoryL2, liveL2s)));
+    .where(and(eq(products.categoryL1, l1), ...listed(gender), inArray(products.categoryL2, liveL2s)));
   return rows.map(toCard);
 }
 
@@ -94,8 +100,8 @@ const SEARCH_LIMIT = 240;
  * narrowed in SQL; the rest (colors, fiber shares, style phrases) is scored per product.
  * `within` further limits the search to some sub-categories (in-page search).
  */
-async function scoredMatches(q: ParsedQuery, within?: L2[]): Promise<CardProduct[]> {
-  const where: SQL[] = [eq(products.active, true), eq(products.inStock, true)];
+async function scoredMatches(q: ParsedQuery, gender: Gender, within?: L2[]): Promise<CardProduct[]> {
+  const where: SQL[] = listed(gender);
   const l2s = [...new Set(q.categories.flatMap((c) => c.l2))];
   if (l2s.length) where.push(inArray(products.categoryL2, l2s));
   if (within) where.push(inArray(products.categoryL2, within));
@@ -123,15 +129,15 @@ async function scoredMatches(q: ParsedQuery, within?: L2[]): Promise<CardProduct
   return scored.sort((a, b) => b.relevance! - a.relevance!);
 }
 
-export async function searchProducts(q: ParsedQuery): Promise<{ items: CardProduct[]; total: number }> {
-  const scored = await scoredMatches(q);
+export async function searchProducts(q: ParsedQuery, gender: Gender): Promise<{ items: CardProduct[]; total: number }> {
+  const scored = await scoredMatches(q, gender);
   return { items: scored.slice(0, SEARCH_LIMIT), total: scored.length };
 }
 
 /** In-page search: id → relevance for every match within the given sub-categories. */
-export async function searchWithin(q: ParsedQuery, within: L2[]): Promise<Record<string, number>> {
+export async function searchWithin(q: ParsedQuery, within: L2[], gender: Gender): Promise<Record<string, number>> {
   if (within.length === 0) return {};
-  return Object.fromEntries((await scoredMatches(q, within)).map((p) => [p.id, p.relevance!]));
+  return Object.fromEntries((await scoredMatches(q, gender, within)).map((p) => [p.id, p.relevance!]));
 }
 
 export type Availability = "available" | "sold_out" | "gone";
@@ -151,23 +157,23 @@ export async function productsByIds(ids: string[]): Promise<FavoriteProduct[]> {
   return rows.map((r) => ({ ...toCard(r), availability: !r.active ? "gone" : !r.inStock ? "sold_out" : "available" }));
 }
 
-export async function productsForBrand(brand: BrandId): Promise<CardProduct[]> {
+export async function productsForBrand(brand: BrandId, gender: Gender): Promise<CardProduct[]> {
   const rows = await db
     .select(cardColumns)
     .from(products)
     .leftJoin(priceDrops, eq(priceDrops.productId, products.id))
-    .where(and(eq(products.brand, brand), eq(products.active, true), eq(products.inStock, true)));
+    .where(and(eq(products.brand, brand), ...listed(gender)));
   return rows.map(toCard);
 }
 
-export async function weeklyDrops(today = new Date()): Promise<CardProduct[]> {
+export async function weeklyDrops(gender: Gender, today = new Date()): Promise<CardProduct[]> {
   // Drop day counts as day 1, so the window starts DROP_WINDOW_DAYS − 1 days back.
   const since = new Date(today.getTime() - (DROP_WINDOW_DAYS - 1) * 864e5).toISOString().slice(0, 10);
   const rows = await db
     .select(cardColumns)
     .from(priceDrops)
     .innerJoin(products, eq(priceDrops.productId, products.id))
-    .where(and(eq(products.active, true), eq(products.inStock, true), gte(priceDrops.detectedOn, since)))
+    .where(and(...listed(gender), gte(priceDrops.detectedOn, since)))
     .orderBy(desc(priceDrops.dropPct));
   return rows.map(toCard);
 }
@@ -180,11 +186,11 @@ export interface L2Coverage {
 }
 
 /** Per-L2 brand coverage — drives which browse pages go live (PRD ch.5 / ch.14). */
-export async function coverage(): Promise<L2Coverage[]> {
+export async function coverage(gender: Gender): Promise<L2Coverage[]> {
   const rows = await db
     .select({ l2: products.categoryL2, brand: products.brand, n: sql<number>`count(*)::int` })
     .from(products)
-    .where(and(eq(products.active, true), eq(products.inStock, true)))
+    .where(and(...listed(gender)))
     .groupBy(products.categoryL2, products.brand);
   const byL2 = new Map<string, L2Coverage>();
   for (const r of rows) {
@@ -211,7 +217,7 @@ export interface CategoryCover {
  * Home-page cover image per L1: the highest default-weight value score among
  * live L2 pages (ties → cheaper). Only products with an image qualify.
  */
-export async function topValueByL1(liveL2s: L2[]): Promise<Map<string, CategoryCover>> {
+export async function topValueByL1(liveL2s: L2[], gender: Gender): Promise<Map<string, CategoryCover>> {
   if (liveL2s.length === 0) return new Map();
   const rows = await db.execute<{
     category_l1: string; category_l2: string; brand: string; product_name: string;
@@ -219,7 +225,7 @@ export async function topValueByL1(liveL2s: L2[]): Promise<Map<string, CategoryC
   }>(sql`
     SELECT DISTINCT ON (category_l1) category_l1, category_l2, brand, product_name, image_url, value_score, sale_price
     FROM ${products}
-    WHERE active AND in_stock AND image_url IS NOT NULL AND value_score IS NOT NULL
+    WHERE gender = ${gender} AND active AND in_stock AND image_url IS NOT NULL AND value_score IS NOT NULL
       AND category_l2 IN (${sql.join(liveL2s.map((l) => sql`${l}`), sql`, `)})
     ORDER BY category_l1, value_score DESC, sale_price ASC
   `);
