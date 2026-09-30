@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { BRANDS, type BrandId } from "@/domain/brands";
 import { COLOR_FAMILIES, COLOR_FAMILY_LABEL, type ColorFamily } from "@/domain/colors";
 import { FIBERS, type Fiber } from "@/domain/materials";
+import { isEmptyQuery, parseQuery } from "@/domain/search";
 import { DEFAULT_MATERIAL_WEIGHT } from "@/domain/scoring";
 import { L2_INDEX, type L2 } from "@/domain/taxonomy";
 import type { CardProduct } from "@/lib/types";
@@ -59,11 +60,11 @@ function writeWeight(w: number) {
  *   `"switch"` = single-select sub-category switcher with "全部", always visible (L1 group page).
  */
 export function Browser({ products, facetL2 = false }: { products: CardProduct[]; facetL2?: boolean | "switch" }) {
-  // Search results carry a relevance score; everywhere else the relevance sort is hidden.
-  const hasRelevance = products.some((p) => p.relevance !== undefined);
+  // Search results carry a relevance score; elsewhere the in-page search supplies one.
+  const isSearchPage = products.some((p) => p.relevance !== undefined);
   const weight = useSyncExternalStore(subscribeWeight, readWeight, () => DEFAULT_MATERIAL_WEIGHT);
   const setWeight = writeWeight;
-  const [sort, setSort] = useState<SortKey>(hasRelevance ? "relevance" : "value");
+  const [sort, setSort] = useState<SortKey>(isSearchPage ? "relevance" : "value");
   const [brands, setBrands] = useState<Set<BrandId>>(new Set());
   const [colors, setColors] = useState<Set<ColorFamily>>(new Set());
   const [fibers, setFibers] = useState<Set<string>>(new Set());
@@ -71,6 +72,13 @@ export function Browser({ products, facetL2 = false }: { products: CardProduct[]
   const [priceMax, setPriceMax] = useState<number | null>(null);
   const [shown, setShown] = useState(PAGE);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const { matches, searching, searchFailed } = usePageSearch(query, products, isSearchPage, () => {
+    setSort("relevance");
+    setShown(PAGE);
+  });
+  const hasRelevance = isSearchPage || matches !== null;
+  const activeSort: SortKey = sort === "relevance" && !hasRelevance ? "value" : sort;
 
   const facets = useMemo(() => {
     const count = <K extends string>(keys: (p: CardProduct) => K[]) => {
@@ -90,6 +98,7 @@ export function Browser({ products, facetL2 = false }: { products: CardProduct[]
   const results = useMemo(() => {
     const filtered = products.filter(
       (p) =>
+        (matches === null || matches.has(p.id)) &&
         (brands.size === 0 || brands.has(p.brand)) &&
         (colors.size === 0 || p.colorFamilies.some((c) => colors.has(c))) &&
         (fibers.size === 0 || (p.dominantFiber && fibers.has(p.dominantFiber))) &&
@@ -97,11 +106,11 @@ export function Browser({ products, facetL2 = false }: { products: CardProduct[]
         (priceMax === null || p.salePrice <= priceMax),
     );
     // Rescore locally: slider changes never hit the server (PRD ch.11).
-    const scored: ScoredProduct[] = filtered.map((p) => {
-      const score = Math.round(100 * (weight * (p.materialScore ?? 0) + (1 - weight) * (1 - p.pricePercentile)));
-      const materialPart = Math.round(100 * weight * (p.materialScore ?? 0));
-      return { ...p, score, materialPart, pricePart: score - materialPart };
-    });
+    const scored: ScoredProduct[] = filtered.map((p) => ({
+      ...p,
+      relevance: matches?.get(p.id) ?? p.relevance,
+      score: Math.round(100 * (weight * (p.materialScore ?? 0) + (1 - weight) * (1 - p.pricePercentile))),
+    }));
     const byPrice = (a: ScoredProduct, b: ScoredProduct) => a.salePrice - b.salePrice;
     const cmp: Record<SortKey, (a: ScoredProduct, b: ScoredProduct) => number> = {
       relevance: (a, b) => (b.relevance ?? 0) - (a.relevance ?? 0) || b.score - a.score,
@@ -110,12 +119,9 @@ export function Browser({ products, facetL2 = false }: { products: CardProduct[]
       "price-desc": (a, b) => -byPrice(a, b),
       material: (a, b) => (b.materialScore ?? -1) - (a.materialScore ?? -1) || byPrice(a, b),
     };
-    return scored.sort(cmp[sort]);
-  }, [products, brands, colors, fibers, l2s, priceMax, weight, sort]);
+    return scored.sort(cmp[activeSort]);
+  }, [products, matches, brands, colors, fibers, l2s, priceMax, weight, activeSort]);
 
-  const range: [number, number] = results.length
-    ? [Math.min(...results.map((r) => r.score)), Math.max(...results.map((r) => r.score))]
-    : [0, 100];
   // The switcher is navigation, not a filter: it isn't counted or cleared with the filters.
   const l2IsFilter = facetL2 === true;
   const activeFilters = brands.size + colors.size + fibers.size + (l2IsFilter ? l2s.size : 0) + (priceMax !== null ? 1 : 0);
@@ -125,24 +131,25 @@ export function Browser({ products, facetL2 = false }: { products: CardProduct[]
   return (
     <div className="grid lg:grid-cols-[260px_1fr] gap-8">
       {/* Controls */}
-      <aside className="lg:sticky lg:top-20 self-start space-y-4 lg:space-y-7">
+      {/* Sticky on desktop, with its own scroll so long filter lists stay reachable. */}
+      <aside className="lg:sticky lg:top-20 self-start space-y-4 lg:space-y-7 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-2 lg:pb-6">
         <section aria-labelledby="w-label" className="stitch bg-paper border border-rule p-4">
           <div id="w-label" className="flex items-baseline justify-between">
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint">權重</span>
+            <span className="font-mono text-sm uppercase tracking-[0.14em] text-ink-faint">權重</span>
             {pos !== 50 && (
-              <button type="button" onClick={() => setWeight(DEFAULT_MATERIAL_WEIGHT)} className="text-[11px] text-ink-soft hover:text-ink underline underline-offset-2">
+              <button type="button" onClick={() => setWeight(DEFAULT_MATERIAL_WEIGHT)} className="text-sm text-ink-soft hover:text-ink underline underline-offset-2">
                 回到 50/50
               </button>
             )}
           </div>
           <div className="mt-3 flex items-end justify-between">
             <div>
-              <div className="text-xs text-ochre">價格</div>
-              <div className="font-display text-3xl leading-none tabular-nums text-ochre">{100 - pos}</div>
+              <div className="text-sm text-ochre">價格</div>
+              <div className="font-display text-[32px] leading-none tabular-nums text-ochre">{100 - pos}</div>
             </div>
             <div className="text-right">
-              <div className="text-xs text-indigo">材質</div>
-              <div className="font-display text-3xl leading-none tabular-nums text-indigo">{pos}</div>
+              <div className="text-sm text-indigo">材質</div>
+              <div className="font-display text-[32px] leading-none tabular-nums text-indigo">{pos}</div>
             </div>
           </div>
           <input
@@ -157,12 +164,14 @@ export function Browser({ products, facetL2 = false }: { products: CardProduct[]
             aria-label="材質權重"
             aria-valuetext={`材質 ${pos}%，價格 ${100 - pos}%`}
           />
-          <p className="mt-1 text-[11px] leading-relaxed text-ink-faint">往右拉，材質更重要；往左拉，價格更重要。列表即時重排。</p>
+          <p className="mt-1 text-sm leading-relaxed text-ink-soft">往右拉，材質更重要；往左拉，價格更重要。列表即時重排。</p>
         </section>
+
+        {!isSearchPage && <PageSearch query={query} onChange={setQuery} searching={searching} failed={searchFailed} />}
 
         {facetL2 === "switch" && l2Options.length > 1 && (
           <section aria-labelledby="sub-label">
-            <h3 id="sub-label" className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint mb-2">子分類</h3>
+            <h3 id="sub-label" className="font-mono text-sm uppercase tracking-[0.14em] text-ink-faint mb-2">子分類</h3>
             <div role="radiogroup" aria-labelledby="sub-label" className="flex flex-wrap lg:flex-col gap-1.5 lg:gap-0">
               {[null, ...l2Options].map((l2) => {
                 const on = l2 === null ? l2s.size === 0 : l2s.has(l2);
@@ -185,7 +194,7 @@ export function Browser({ products, facetL2 = false }: { products: CardProduct[]
                   >
                     <span aria-hidden className={`hidden lg:inline-block w-1.5 h-1.5 rounded-full self-center ${on ? "bg-indigo" : "bg-transparent"}`} />
                     <span>{l2 === null ? "全部" : L2_INDEX[l2].name}</span>
-                    <span className={`ml-auto font-mono text-[10px] ${on ? "text-paper/70 lg:text-ink-faint" : "text-ink-faint"}`}>{count}</span>
+                    <span className={`ml-auto font-mono text-sm ${on ? "text-paper/70 lg:text-ink-faint" : "text-ink-faint"}`}>{count}</span>
                   </button>
                 );
               })}
@@ -266,7 +275,7 @@ export function Browser({ products, facetL2 = false }: { products: CardProduct[]
                   className="w-full accent-ink"
                   aria-label="價格上限"
                 />
-                <div className="flex justify-between font-mono text-[11px] text-ink-soft">
+                <div className="flex justify-between font-mono text-sm text-ink-soft">
                   <span>$0</span>
                   <span>{priceMax === null ? "不限" : `≤ $${priceMax}`}</span>
                 </div>
@@ -299,10 +308,10 @@ export function Browser({ products, facetL2 = false }: { products: CardProduct[]
               <button
                 key={s.key}
                 role="radio"
-                aria-checked={sort === s.key}
+                aria-checked={activeSort === s.key}
                 type="button"
                 onClick={() => setSort(s.key)}
-                className={`px-2.5 py-1 border transition-colors ${sort === s.key ? "bg-ink text-paper border-ink" : "border-rule hover:border-ink/50"}`}
+                className={`px-2.5 py-1 border transition-colors ${activeSort === s.key ? "bg-ink text-paper border-ink" : "border-rule hover:border-ink/50"}`}
               >
                 {s.label}
               </button>
@@ -311,12 +320,14 @@ export function Browser({ products, facetL2 = false }: { products: CardProduct[]
         </div>
 
         {results.length === 0 ? (
-          <p className="py-20 text-center text-ink-faint">沒有符合條件的商品。試著放寬篩選。</p>
+          <p className="py-20 text-center text-ink-faint">
+            {matches !== null && activeFilters === 0 ? `這個分類裡沒有符合「${query.trim()}」的商品。` : "沒有符合條件的商品。試著放寬篩選或搜尋條件。"}
+          </p>
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
               {results.slice(0, shown).map((p, i) => (
-                <ProductCard key={p.id} p={p} weight={weight} range={range} index={i} />
+                <ProductCard key={p.id} p={p} index={i} />
               ))}
             </div>
             {shown < results.length && (
@@ -333,10 +344,90 @@ export function Browser({ products, facetL2 = false }: { products: CardProduct[]
   );
 }
 
+/**
+ * Search box on browse pages: the same lexicon as the site search, limited to
+ * this page's sub-categories. Returns the matching ids (null = no search active).
+ */
+function usePageSearch(query: string, products: CardProduct[], disabled: boolean, onResults: () => void) {
+  const [state, setState] = useState<{ key: string; matches: Map<string, number> | null; failed: boolean }>({ key: "", matches: null, failed: false });
+  const parsed = useMemo(() => parseQuery(query), [query]);
+  const l2Key = useMemo(() => [...new Set(products.map((p) => p.l2))].sort().join(","), [products]);
+  const key = disabled || isEmptyQuery(parsed) ? "" : `${query.trim()}|${l2Key}`;
+
+  useEffect(() => {
+    if (!key) return;
+    const ctrl = new AbortController();
+    // Debounced: fire once typing pauses.
+    const timer = setTimeout(() => {
+      const [q, l2] = key.split("|");
+      fetch(`/api/search?${new URLSearchParams({ q, l2 })}`, { signal: ctrl.signal })
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+        .then(({ matches }: { matches: Record<string, number> }) => {
+          setState({ key, matches: new Map(Object.entries(matches)), failed: false });
+          onResults();
+        })
+        .catch((e) => e.name !== "AbortError" && setState({ key, matches: null, failed: true }));
+    }, 300);
+    return () => {
+      clearTimeout(timer);
+      ctrl.abort();
+    };
+    // onResults is a fresh closure each render; only the query matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  const current = key !== "" && state.key === key;
+  return {
+    matches: current ? state.matches : null,
+    searching: key !== "" && !current,
+    searchFailed: current && state.failed,
+  };
+}
+
+function PageSearch({ query, onChange, searching, failed }: { query: string; onChange: (q: string) => void; searching: boolean; failed: boolean }) {
+  const parsed = useMemo(() => parseQuery(query), [query]);
+  const understood = [
+    ...parsed.categories, ...parsed.styles, ...parsed.colors, ...parsed.fibers, ...parsed.brands,
+  ].map((x) => x.label).concat(parsed.priceMax ? [`≤ $${parsed.priceMax.value}`] : [], parsed.keywords);
+  return (
+    <section aria-labelledby="search-label">
+      <h3 id="search-label" className="font-mono text-sm uppercase tracking-[0.14em] text-ink-faint mb-2">搜尋</h3>
+      <div className="relative">
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="長袖、V 領、亞麻、黑色…"
+          aria-label="在這個分類裡搜尋"
+          className="w-full border border-ink/30 bg-paper px-3 py-2 text-sm focus:outline-none focus:border-ink"
+        />
+        {searching && <span className="absolute right-9 top-1/2 -translate-y-1/2 text-xs text-ink-faint">搜尋中…</span>}
+      </div>
+      {query.trim() && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-sm">
+          {understood.length > 0 && <span className="text-ink-faint mr-1">解讀為</span>}
+          {understood.map((label) => (
+            <span key={label} className="border border-rule px-2 py-0.5">{label}</span>
+          ))}
+          {parsed.unknown.map((u) => (
+            <span key={u} className="border border-ochre/50 bg-ochre-wash text-warn px-2 py-0.5" title="詞典裡沒有這個詞，搜尋時略過">
+              看不懂：{u}
+            </span>
+          ))}
+          {failed && <span className="text-warn">搜尋暫時失敗，請稍後再試。</span>}
+          <button type="button" onClick={() => onChange("")} className="ml-auto text-ink-soft underline underline-offset-2 hover:text-ink">
+            清除
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function Facet({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h3 className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint mb-2">{title}</h3>
+      <h3 className="font-mono text-sm uppercase tracking-[0.14em] text-ink-faint mb-2">{title}</h3>
       <div className="flex flex-wrap gap-1.5">{children}</div>
     </section>
   );
@@ -348,9 +439,9 @@ function Chip({ on, onClick, count, children }: { on: boolean; onClick: () => vo
       type="button"
       onClick={onClick}
       aria-pressed={on}
-      className={`text-xs px-2 py-1 border transition-colors ${on ? "bg-ink text-paper border-ink" : "bg-paper border-rule hover:border-ink/50"}`}
+      className={`text-sm px-2.5 py-1 border transition-colors ${on ? "bg-ink text-paper border-ink" : "bg-paper border-rule hover:border-ink/50"}`}
     >
-      {children} <span className={`font-mono text-[10px] ${on ? "text-paper/70" : "text-ink-faint"}`}>{count}</span>
+      {children} <span className={`font-mono text-sm ${on ? "text-paper/70" : "text-ink-faint"}`}>{count}</span>
     </button>
   );
 }

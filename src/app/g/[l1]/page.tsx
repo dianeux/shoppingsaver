@@ -27,7 +27,7 @@ export default async function GroupPage({ params }: PageProps<"/g/[l1]">) {
   const [items, status] = await Promise.all([productsForL1(l1, live), siteStatus()]);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
+    <div className="mx-auto lg:max-w-[90vw] px-4 sm:px-6 py-8">
       <nav className="font-mono text-[11px] text-ink-faint mb-2">
         <Link href="/" className="hover:text-ink">品類</Link>
       </nav>

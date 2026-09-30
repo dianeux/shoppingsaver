@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "本週降價" };
 export default async function DealsPage() {
   const [items, status] = await Promise.all([weeklyDrops(), siteStatus()]);
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
+    <div className="mx-auto lg:max-w-[90vw] px-4 sm:px-6 py-8">
       <div className="flex flex-wrap items-end gap-x-6 gap-y-3 mb-3">
         <h1 className="font-display text-5xl sm:text-6xl leading-none">
           本週<em className="text-madder">降價</em>

@@ -25,7 +25,7 @@ export default async function CategoryPage({ params }: PageProps<"/c/[l2]">) {
   const info = L2_INDEX[l2];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
+    <div className="mx-auto lg:max-w-[90vw] px-4 sm:px-6 py-8">
       <nav className="font-mono text-[11px] text-ink-faint mb-2">
         <Link href="/" className="hover:text-ink">品類</Link> /{" "}
         <Link href={`/g/${info.l1}`} className="hover:text-ink">{info.l1Name}</Link>

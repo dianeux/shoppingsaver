@@ -1,24 +1,26 @@
 @import "tailwindcss";
 
 /*
- * "Care label" palette: undyed cotton ground, ink text, two natural dyes for the
- * two sub-scores (indigo = material, ochre = price) and madder for price drops.
+ * White ground, ink text, two accents for the two sub-scores (indigo =
+ * material, ochre = price) and madder for price drops.
  */
 :root {
-  --cloth: #f3eee4;
-  --cloth-deep: #e8e0d0;
-  --paper: #fbf8f2;
-  --ink: #1c1a17;
-  --ink-soft: #5b554c;
-  --ink-faint: #8f877b;
-  --rule: #d6ccb9;
+  --cloth: #ffffff;
+  --cloth-deep: #f2f1ef;
+  --paper: #ffffff;
+  /* Text tones all meet WCAG AA (≥ 4.5:1) on white: 17.4 / 9.2 / 5.3. */
+  --ink: #1a1a1a;
+  --ink-soft: #484848;
+  --ink-faint: #6b6b6b;
+  --rule: #dcdcdc;
   --indigo: #28386b;
   --indigo-wash: #dfe3ef;
-  --ochre: #b7822a;
+  --ochre: #8c6418; /* 5.3:1 on white; used as text on the weight slider */
   --ochre-wash: #f1e4c8;
   --madder: #a8352b;
   --madder-wash: #f3dcd6;
   --warn: #8a5a00;
+  --value: #7a4a24; /* brown, 7.4:1 on white */
 }
 
 @theme inline {
@@ -36,9 +38,11 @@
   --color-madder: var(--madder);
   --color-madder-wash: var(--madder-wash);
   --color-warn: var(--warn);
-  --font-display: var(--font-instrument), var(--font-noto-serif), serif;
+  --color-value: var(--value);
+  /* Sans-serif only: display and label styles reuse the body face. */
+  --font-display: var(--font-noto-sans), system-ui, sans-serif;
   --font-sans: var(--font-noto-sans), system-ui, sans-serif;
-  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  --font-mono: var(--font-noto-sans), system-ui, sans-serif;
 }
 
 html {
@@ -48,12 +52,12 @@ html {
 
 body {
   font-family: var(--font-sans);
-  /* Faint woven texture: two crossed hairline gradients + noise. */
   background-color: var(--cloth);
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.3 0 0 0 0 0.22 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
-    repeating-linear-gradient(0deg, rgba(90, 76, 52, 0.025) 0 1px, transparent 1px 3px),
-    repeating-linear-gradient(90deg, rgba(90, 76, 52, 0.02) 0 1px, transparent 1px 3px);
+}
+
+/* Label/price styles keep aligned digits now that they aren't monospaced. */
+.font-mono {
+  font-variant-numeric: tabular-nums;
 }
 
 ::selection {

@@ -92,11 +92,13 @@ const SEARCH_LIMIT = 240;
 /**
  * Lexicon search over listed, in-stock products. Category, brand and price are
  * narrowed in SQL; the rest (colors, fiber shares, style phrases) is scored per product.
+ * `within` further limits the search to some sub-categories (in-page search).
  */
-export async function searchProducts(q: ParsedQuery): Promise<{ items: CardProduct[]; total: number }> {
+async function scoredMatches(q: ParsedQuery, within?: L2[]): Promise<CardProduct[]> {
   const where: SQL[] = [eq(products.active, true), eq(products.inStock, true)];
   const l2s = [...new Set(q.categories.flatMap((c) => c.l2))];
   if (l2s.length) where.push(inArray(products.categoryL2, l2s));
+  if (within) where.push(inArray(products.categoryL2, within));
   if (q.brands.length) where.push(inArray(products.brand, q.brands.map((b) => b.brand)));
   if (q.priceMax) where.push(lte(products.salePrice, q.priceMax.value));
 
@@ -118,8 +120,18 @@ export async function searchProducts(q: ParsedQuery): Promise<{ items: CardProdu
     );
     if (relevance !== null) scored.push({ ...toCard(r), relevance });
   }
-  scored.sort((a, b) => b.relevance! - a.relevance!);
+  return scored.sort((a, b) => b.relevance! - a.relevance!);
+}
+
+export async function searchProducts(q: ParsedQuery): Promise<{ items: CardProduct[]; total: number }> {
+  const scored = await scoredMatches(q);
   return { items: scored.slice(0, SEARCH_LIMIT), total: scored.length };
+}
+
+/** In-page search: id → relevance for every match within the given sub-categories. */
+export async function searchWithin(q: ParsedQuery, within: L2[]): Promise<Record<string, number>> {
+  if (within.length === 0) return {};
+  return Object.fromEntries((await scoredMatches(q, within)).map((p) => [p.id, p.relevance!]));
 }
 
 export type Availability = "available" | "sold_out" | "gone";

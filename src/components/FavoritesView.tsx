@@ -70,25 +70,23 @@ export function FavoritesView() {
   if (state.status === "loading" && !known) return <p className="py-16 text-center text-ink-faint">載入中…</p>;
 
   const available = [...groups.dropped, ...groups.others];
-  const scored: ScoredProduct[] = available.map((p) => {
-    const w = DEFAULT_MATERIAL_WEIGHT;
-    const score = Math.round(100 * (w * (p.materialScore ?? 0) + (1 - w) * (1 - p.pricePercentile)));
-    const materialPart = Math.round(100 * w * (p.materialScore ?? 0));
-    return { ...p, score, materialPart, pricePart: score - materialPart };
-  });
-  const range: [number, number] = scored.length ? [Math.min(...scored.map((s) => s.score)), Math.max(...scored.map((s) => s.score))] : [0, 100];
+  const w = DEFAULT_MATERIAL_WEIGHT;
+  const scored: ScoredProduct[] = available.map((p) => ({
+    ...p,
+    score: Math.round(100 * (w * (p.materialScore ?? 0) + (1 - w) * (1 - p.pricePercentile))),
+  }));
   const byId = new Map(scored.map((s) => [s.id, s]));
 
   return (
     <div className="space-y-12">
       {groups.dropped.length > 0 && (
         <Section title="降價中" note={`${groups.dropped.length} 件比前一天便宜`} accent>
-          {groups.dropped.map((p, i) => <ProductCard key={p.id} p={byId.get(p.id)!} weight={DEFAULT_MATERIAL_WEIGHT} range={range} index={i} />)}
+          {groups.dropped.map((p, i) => <ProductCard key={p.id} p={byId.get(p.id)!} index={i} />)}
         </Section>
       )}
       {groups.others.length > 0 && (
         <Section title={groups.dropped.length ? "其他最愛" : "我的最愛"} note={`${groups.others.length} 件`}>
-          {groups.others.map((p, i) => <ProductCard key={p.id} p={byId.get(p.id)!} weight={DEFAULT_MATERIAL_WEIGHT} range={range} index={i} />)}
+          {groups.others.map((p, i) => <ProductCard key={p.id} p={byId.get(p.id)!} index={i} />)}
         </Section>
       )}
       {groups.unavailable.length > 0 && (
@@ -136,7 +134,7 @@ function Section({ title, note, accent = false, children }: { title: string; not
         <h2 className={`font-display text-2xl ${accent ? "text-madder" : ""}`}>{title}</h2>
         <span className="text-xs text-ink-faint">{note}</span>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">{children}</div>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">{children}</div>
     </section>
   );
 }

@@ -35,7 +35,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
   const [{ items, total }, status] = await Promise.all([empty ? Promise.resolve({ items: [], total: 0 }) : searchProducts(parsed), siteStatus()]);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
+    <div className="mx-auto lg:max-w-[90vw] px-4 sm:px-6 py-8">
       <form action="/search" className="flex gap-2 max-w-2xl mb-4">
         <input
           name="q"
