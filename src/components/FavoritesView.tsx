@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { BRANDS } from "@/domain/brands";
+import { BRANDS, type BrandId } from "@/domain/brands";
 import { DEFAULT_MATERIAL_WEIGHT } from "@/domain/scoring";
 import type { FavoriteProduct } from "@/lib/catalog";
 import { removeFavorites, useFavorites } from "@/lib/favorites";
@@ -45,12 +45,16 @@ export function FavoritesView() {
 
   const groups = useMemo(() => {
     const list = known ? ids.map((id) => known.get(id)).filter((p): p is FavoriteProduct => !!p) : [];
-    const available = list.filter((p) => p.availability === "available");
-    return {
-      dropped: available.filter((p) => p.drop),
-      others: available.filter((p) => !p.drop),
-      unavailable: list.filter((p) => p.availability !== "available"),
-    };
+    const byBrand = new Map<BrandId, FavoriteProduct[]>();
+    for (const p of list.filter((p) => p.availability === "available")) byBrand.set(p.brand, [...(byBrand.get(p.brand) ?? []), p]);
+    // Biggest baskets first; within a brand, items on the drops list lead.
+    const brands = [...byBrand].map(([brand, items]) => ({
+      brand,
+      items: [...items.filter((p) => p.drop), ...items.filter((p) => !p.drop)],
+      total: sumPrices(items),
+    }));
+    brands.sort((a, b) => b.items.length - a.items.length || b.total - a.total);
+    return { brands, unavailable: list.filter((p) => p.availability !== "available") };
   }, [ids, known]);
 
   if (ids.length === 0) {
@@ -69,7 +73,7 @@ export function FavoritesView() {
   if (state.status === "error") return <p className="py-16 text-center text-warn">載入最愛時發生錯誤，請重新整理頁面。</p>;
   if (state.status === "loading" && !known) return <p className="py-16 text-center text-ink-faint">載入中…</p>;
 
-  const available = [...groups.dropped, ...groups.others];
+  const available = groups.brands.flatMap((g) => g.items);
   const w = DEFAULT_MATERIAL_WEIGHT;
   const scored: ScoredProduct[] = available.map((p) => ({
     ...p,
@@ -79,16 +83,34 @@ export function FavoritesView() {
 
   return (
     <div className="space-y-12">
-      {groups.dropped.length > 0 && (
-        <Section title="降價中" note={`${groups.dropped.length} 件比前一天便宜`} accent>
-          {groups.dropped.map((p, i) => <ProductCard key={p.id} p={byId.get(p.id)!} index={i} />)}
-        </Section>
+      {available.length > 0 && (
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border border-rule px-4 py-3">
+          <span className="text-sm text-ink-soft">{groups.brands.length} 家店 · {available.length} 件</span>
+          <span className="ml-auto text-sm">
+            全部合計 <strong className="text-xl font-medium tabular-nums">{usd(sumPrices(available))}</strong>
+          </span>
+          <span className="basis-full text-xs text-ink-faint">以每件目前的最低售價計算（不含運費與稅）；已售完或下架的商品不計入。</span>
+        </div>
       )}
-      {groups.others.length > 0 && (
-        <Section title={groups.dropped.length ? "其他最愛" : "我的最愛"} note={`${groups.others.length} 件`}>
-          {groups.others.map((p, i) => <ProductCard key={p.id} p={byId.get(p.id)!} index={i} />)}
-        </Section>
-      )}
+      {groups.brands.map((g) => {
+        const drops = g.items.filter((p) => p.drop).length;
+        return (
+          <section key={g.brand}>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-rule pb-2 mb-4">
+              <h2 className="font-display text-2xl">{BRANDS[g.brand].name}</h2>
+              <span className="text-xs text-ink-faint">
+                {g.items.length} 件{drops > 0 && <span className="text-madder"> · {drops} 件降價中</span>}
+              </span>
+              <span className="ml-auto text-sm">
+                小計 <strong className="text-lg font-medium tabular-nums">{usd(g.total)}</strong>
+              </span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {g.items.map((p, i) => <ProductCard key={p.id} p={byId.get(p.id)!} index={i} />)}
+            </div>
+          </section>
+        );
+      })}
       {groups.unavailable.length > 0 && (
         <section>
           <div className="flex flex-wrap items-baseline gap-3 border-b border-rule pb-2 mb-4">
@@ -127,14 +149,7 @@ export function FavoritesView() {
   );
 }
 
-function Section({ title, note, accent = false, children }: { title: string; note: string; accent?: boolean; children: React.ReactNode }) {
-  return (
-    <section>
-      <div className="flex items-baseline gap-3 border-b border-rule pb-2 mb-4">
-        <h2 className={`font-display text-2xl ${accent ? "text-madder" : ""}`}>{title}</h2>
-        <span className="text-xs text-ink-faint">{note}</span>
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">{children}</div>
-    </section>
-  );
+/** Sum in cents so totals don't pick up floating-point dust. */
+function sumPrices(items: { salePrice: number }[]): number {
+  return items.reduce((cents, p) => cents + Math.round(p.salePrice * 100), 0) / 100;
 }
