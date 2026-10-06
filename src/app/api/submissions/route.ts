@@ -1,4 +1,4 @@
-import { SUBMISSION_ERROR_COPY, validateSubmission } from "@/domain/clip";
+import { validateSubmission } from "@/domain/clip";
 import { saveSubmission, visitorHash } from "@/lib/submissions";
 
 /** POST a bookmarklet draft (SubmissionInput). Validated again here; the client's checks are only for the form. */
@@ -10,12 +10,11 @@ export async function POST(request: Request) {
     return Response.json({ error: "invalid JSON" }, { status: 400 });
   }
   const v = validateSubmission(body);
-  if (!v.ok) return Response.json({ errors: v.errors, messages: v.errors.map((e) => SUBMISSION_ERROR_COPY[e]) }, { status: 422 });
+  // Error codes only; the page shows them in the visitor's language.
+  if (!v.ok) return Response.json({ errors: v.errors }, { status: 422 });
   const r = await saveSubmission(v.value, visitorHash(request));
   if (!r.ok) {
-    return r.reason === "rate_limited"
-      ? Response.json({ error: "一小時內提交太多次，請稍後再試。" }, { status: 429 })
-      : Response.json({ error: "這件商品已在目錄中。" }, { status: 409 });
+    return Response.json({ error: r.reason }, { status: r.reason === "rate_limited" ? 429 : 409 });
   }
   return Response.json(r, { status: r.created ? 201 : 200 });
 }

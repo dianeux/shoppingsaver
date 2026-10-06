@@ -30,8 +30,3 @@ export function genderOfPath(pathname: string): Gender {
 export function productId(brand: string, sourceId: string, gender: Gender): string {
   return gender === "women" ? `${brand}:${sourceId}` : `${brand}:men:${sourceId}`;
 }
-
-/** Page title within a section; men's pages say so ("男裝 Tops"), women's keep the plain title. */
-export function sectionTitle(gender: Gender, title: string): string {
-  return gender === "women" ? title : `${GENDER_LABEL[gender]} ${title}`;
-}

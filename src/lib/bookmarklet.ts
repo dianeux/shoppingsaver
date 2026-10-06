@@ -8,7 +8,7 @@ import { CLIP_BRANDS } from "@/domain/clip";
  */
 function clip(origin: string, hosts: string[]) {
   if (hosts.indexOf(location.hostname) < 0) {
-    alert("ShoppingSaver：請在 Uniqlo、GU、Zara 或 H&M 美國官網的商品頁使用。");
+    alert("ShoppingSaver: 請在 Uniqlo、GU、Zara 或 H&M 美國官網的商品頁使用。\nUse this on a product page of the Uniqlo, GU, Zara or H&M US site.");
     return;
   }
   const d = document;

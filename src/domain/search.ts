@@ -141,6 +141,9 @@ const LEXICON: [string[], Entry][] = [
   [["old navy", "oldnavy", "老海軍"], brand("Old Navy", "oldnavy")],
 ];
 
+/** Every label the lexicon can show (for checking translations). */
+export const LEXICON_LABELS = [...new Set(LEXICON.map(([, entry]) => entry.label))];
+
 /** Every term, longest first, so greedy matching prefers the most specific phrase. */
 const TERMS: { term: string; entry: Entry }[] = LEXICON.flatMap(([terms, entry]) => terms.map((term) => ({ term: normalize(term), entry }))).sort(
   (a, b) => b.term.length - a.term.length,

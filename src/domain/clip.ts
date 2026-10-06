@@ -216,18 +216,6 @@ export function draftFromClip(p: ClipPayload): { input: SubmissionInput; missing
 export type SubmissionError =
   | "unsupported_url" | "name" | "gender" | "l2" | "price" | "list_price" | "composition" | "image" | "colors";
 
-export const SUBMISSION_ERROR_COPY: Record<SubmissionError, string> = {
-  unsupported_url: "只接受 Uniqlo、GU、Zara、H&M 美國官網的商品頁",
-  name: "請填商品名稱",
-  gender: "請選女裝或男裝",
-  l2: "請選品類",
-  price: "價格要在 $1–$2,000 之間",
-  list_price: "原價不能低於售價",
-  composition: "成分要寫出各纖維的百分比，例如「60% 棉, 40% 聚酯」",
-  image: "圖片只能來自品牌官方圖庫",
-  colors: "顏色清單格式不正確",
-};
-
 /** Shared by the preview page and the API (which never trusts the client's checks). */
 export function validateSubmission(raw: unknown):
   | { ok: true; value: SubmissionInput & { brand: BrandId; sourceId: string; gender: Gender; l2: L2; price: number } }

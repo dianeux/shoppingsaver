@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { BRANDS, type BrandId } from "@/domain/brands";
 import { COLOR_FAMILIES, COLOR_FAMILY_LABEL, type ColorFamily } from "@/domain/colors";
 import { FIBERS, type Fiber } from "@/domain/materials";
+import { useLang } from "@/i18n/client";
+import { colorLabel, fiberLabel, l2Name, lexiconLabel } from "@/i18n/format";
 import { isEmptyQuery, parseQuery } from "@/domain/search";
 import type { Gender } from "@/domain/gender";
 import { DEFAULT_MATERIAL_WEIGHT } from "@/domain/scoring";
@@ -13,13 +15,7 @@ import { ProductCard, type ScoredProduct } from "./ProductCard";
 
 type SortKey = "relevance" | "value" | "price-asc" | "price-desc" | "material";
 
-const SORTS: { key: SortKey; label: string }[] = [
-  { key: "relevance", label: "相關度" },
-  { key: "value", label: "性價比" },
-  { key: "price-asc", label: "價格低→高" },
-  { key: "price-desc", label: "價格高→低" },
-  { key: "material", label: "材質分" },
-];
+const SORTS: SortKey[] = ["relevance", "value", "price-asc", "price-desc", "material"];
 
 const PAGE = 48;
 
@@ -63,6 +59,7 @@ function writeWeight(w: number) {
 export function Browser({ products, gender, facetL2 = false }: { products: CardProduct[]; gender: Gender; facetL2?: boolean | "switch" }) {
   // Search results carry a relevance score; elsewhere the in-page search supplies one.
   const isSearchPage = products.some((p) => p.relevance !== undefined);
+  const { lang, t } = useLang();
   const weight = useSyncExternalStore(subscribeWeight, readWeight, () => DEFAULT_MATERIAL_WEIGHT);
   const setWeight = writeWeight;
   const [sort, setSort] = useState<SortKey>(isSearchPage ? "relevance" : "value");
@@ -136,20 +133,20 @@ export function Browser({ products, gender, facetL2 = false }: { products: CardP
       <aside className="lg:sticky lg:top-20 self-start space-y-4 lg:space-y-7 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-2 lg:pb-6">
         <section aria-labelledby="w-label" className="stitch bg-paper border border-rule p-4">
           <div id="w-label" className="flex items-baseline justify-between">
-            <span className="font-mono text-sm uppercase tracking-[0.14em] text-ink-faint">權重</span>
+            <span className="font-mono text-sm uppercase tracking-[0.14em] text-ink-faint">{t.browser.weight}</span>
             {pos !== 50 && (
               <button type="button" onClick={() => setWeight(DEFAULT_MATERIAL_WEIGHT)} className="text-sm text-ink-soft hover:text-ink underline underline-offset-2">
-                回到 50/50
+                {t.browser.reset}
               </button>
             )}
           </div>
           <div className="mt-3 flex items-end justify-between">
             <div>
-              <div className="text-sm text-ochre">價格</div>
+              <div className="text-sm text-ochre">{t.browser.price}</div>
               <div className="font-display text-[32px] leading-none tabular-nums text-ochre">{100 - pos}</div>
             </div>
             <div className="text-right">
-              <div className="text-sm text-indigo">材質</div>
+              <div className="text-sm text-indigo">{t.browser.material}</div>
               <div className="font-display text-[32px] leading-none tabular-nums text-indigo">{pos}</div>
             </div>
           </div>
@@ -162,17 +159,17 @@ export function Browser({ products, gender, facetL2 = false }: { products: CardP
             onChange={(e) => setWeight(Number(e.target.value) / 100)}
             className="balance mt-2"
             style={{ ["--pos" as string]: `${pos}%` }}
-            aria-label="材質權重"
-            aria-valuetext={`材質 ${pos}%，價格 ${100 - pos}%`}
+            aria-label={t.browser.weightLabel}
+            aria-valuetext={t.browser.weightValue(pos)}
           />
-          <p className="mt-1 text-sm leading-relaxed text-ink-soft">往右拉，材質更重要；往左拉，價格更重要。列表即時重排。</p>
+          <p className="mt-1 text-sm leading-relaxed text-ink-soft">{t.browser.weightHelp}</p>
         </section>
 
         {!isSearchPage && <PageSearch query={query} onChange={setQuery} searching={searching} failed={searchFailed} />}
 
         {facetL2 === "switch" && l2Options.length > 1 && (
           <section aria-labelledby="sub-label">
-            <h3 id="sub-label" className="font-mono text-sm uppercase tracking-[0.14em] text-ink-faint mb-2">子分類</h3>
+            <h3 id="sub-label" className="font-mono text-sm uppercase tracking-[0.14em] text-ink-faint mb-2">{t.browser.subcategory}</h3>
             <div role="radiogroup" aria-labelledby="sub-label" className="flex flex-wrap lg:flex-col gap-1.5 lg:gap-0">
               {[null, ...l2Options].map((l2) => {
                 const on = l2 === null ? l2s.size === 0 : l2s.has(l2);
@@ -194,7 +191,7 @@ export function Browser({ products, gender, facetL2 = false }: { products: CardP
                     }`}
                   >
                     <span aria-hidden className={`hidden lg:inline-block w-1.5 h-1.5 rounded-full self-center ${on ? "bg-indigo" : "bg-transparent"}`} />
-                    <span>{l2 === null ? "全部" : L2_INDEX[l2].name}</span>
+                    <span>{l2 === null ? t.browser.all : l2Name(lang, l2)}</span>
                     <span className={`ml-auto font-mono text-sm ${on ? "text-paper/70 lg:text-ink-faint" : "text-ink-faint"}`}>{count}</span>
                   </button>
                 );
@@ -209,23 +206,23 @@ export function Browser({ products, gender, facetL2 = false }: { products: CardP
           aria-expanded={filtersOpen}
           className="lg:hidden w-full flex items-center justify-between border border-rule bg-paper px-3 py-2 text-sm"
         >
-          <span>篩選{activeFilters > 0 && <span className="ml-1 font-mono text-xs">({activeFilters})</span>}</span>
+          <span>{t.browser.filters}{activeFilters > 0 && <span className="ml-1 font-mono text-xs">({activeFilters})</span>}</span>
           <span aria-hidden className={`transition-transform ${filtersOpen ? "rotate-180" : ""}`}>▾</span>
         </button>
 
         <div className={`${filtersOpen ? "block" : "hidden"} lg:block space-y-7`}>
           {l2IsFilter && facets.l2s.size > 1 && (
-            <Facet title="品類">
+            <Facet title={t.browser.category}>
               {[...facets.l2s].sort((a, b) => b[1] - a[1]).map(([l2, n]) => (
                 <Chip key={l2} on={l2s.has(l2)} onClick={() => setL2s(toggle(l2s, l2))} count={n}>
-                  {L2_INDEX[l2].name}
+                  {l2Name(lang, l2)}
                 </Chip>
               ))}
             </Facet>
           )}
 
           {facets.brands.size > 1 && (
-            <Facet title="品牌">
+            <Facet title={t.browser.brand}>
               {[...facets.brands].sort((a, b) => b[1] - a[1]).map(([b, n]) => (
                 <Chip key={b} on={brands.has(b)} onClick={() => setBrands(toggle(brands, b))} count={n}>
                   {BRANDS[b].name}
@@ -234,34 +231,34 @@ export function Browser({ products, gender, facetL2 = false }: { products: CardP
             </Facet>
           )}
 
-          <Facet title="色族">
+          <Facet title={t.browser.color}>
             {COLOR_FAMILIES.filter((c) => facets.colors.has(c)).map((c) => (
               <button
                 key={c}
                 type="button"
                 onClick={() => setColors(toggle(colors, c))}
                 aria-pressed={colors.has(c)}
-                title={`${COLOR_FAMILY_LABEL[c].label}（${facets.colors.get(c)}）`}
+                title={`${colorLabel(lang, c)} (${facets.colors.get(c)})`}
                 className={`h-7 w-7 rounded-full border-2 transition-transform ${colors.has(c) ? "border-ink scale-110" : "border-paper ring-1 ring-ink/15 hover:scale-105"}`}
                 style={{ background: COLOR_FAMILY_LABEL[c].swatch }}
               >
-                <span className="sr-only">{COLOR_FAMILY_LABEL[c].label}</span>
+                <span className="sr-only">{colorLabel(lang, c)}</span>
               </button>
             ))}
           </Facet>
 
           {facets.fibers.size > 0 && (
-            <Facet title="主要材質">
+            <Facet title={t.browser.fiber}>
               {[...facets.fibers].sort((a, b) => b[1] - a[1]).map(([f, n]) => (
                 <Chip key={f} on={fibers.has(f)} onClick={() => setFibers(toggle(fibers, f))} count={n}>
-                  {FIBERS[f as Fiber]?.label ?? f}
+                  {f in FIBERS ? fiberLabel(lang, f as Fiber) : f}
                 </Chip>
               ))}
             </Facet>
           )}
 
           {facets.maxPrice > 0 && (
-            <Facet title="價格上限">
+            <Facet title={t.browser.priceMax}>
               <div className="w-full">
                 <input
                   type="range"
@@ -274,11 +271,11 @@ export function Browser({ products, gender, facetL2 = false }: { products: CardP
                     setPriceMax(v >= facets.maxPrice ? null : v);
                   }}
                   className="w-full accent-ink"
-                  aria-label="價格上限"
+                  aria-label={t.browser.priceMax}
                 />
                 <div className="flex justify-between font-mono text-sm text-ink-soft">
                   <span>$0</span>
-                  <span>{priceMax === null ? "不限" : `≤ $${priceMax}`}</span>
+                  <span>{priceMax === null ? t.browser.noLimit : `≤ $${priceMax}`}</span>
                 </div>
               </div>
             </Facet>
@@ -290,7 +287,7 @@ export function Browser({ products, gender, facetL2 = false }: { products: CardP
       <section aria-live="polite">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-rule pb-3 mb-5">
           <p className="text-sm text-ink-soft">
-            <span className="font-mono text-ink">{results.length}</span> 件
+            <span className="font-mono text-ink">{results.length}</span> {t.browser.items}
             {activeFilters > 0 && (
               <button
                 type="button"
@@ -300,12 +297,12 @@ export function Browser({ products, gender, facetL2 = false }: { products: CardP
                 }}
                 className="ml-3 text-xs underline underline-offset-2 hover:text-ink"
               >
-                清除 {activeFilters} 個篩選
+                {t.browser.clear(activeFilters)}
               </button>
             )}
           </p>
-          <div role="radiogroup" aria-label="排序" className="ml-auto flex gap-1 text-xs">
-            {SORTS.filter((s) => s.key !== "relevance" || hasRelevance).map((s) => (
+          <div role="radiogroup" aria-label={t.browser.sort} className="ml-auto flex gap-1 text-xs">
+            {SORTS.filter((key) => key !== "relevance" || hasRelevance).map((key) => ({ key, label: t.browser.sorts[key] })).map((s) => (
               <button
                 key={s.key}
                 role="radio"
@@ -322,7 +319,7 @@ export function Browser({ products, gender, facetL2 = false }: { products: CardP
 
         {results.length === 0 ? (
           <p className="py-20 text-center text-ink-faint">
-            {matches !== null && activeFilters === 0 ? `這個分類裡沒有符合「${query.trim()}」的商品。` : "沒有符合條件的商品。試著放寬篩選或搜尋條件。"}
+            {matches !== null && activeFilters === 0 ? t.browser.noMatchQuery(query.trim()) : t.browser.noMatch}
           </p>
         ) : (
           <>
@@ -334,7 +331,7 @@ export function Browser({ products, gender, facetL2 = false }: { products: CardP
             {shown < results.length && (
               <div className="mt-8 text-center">
                 <button type="button" onClick={() => setShown((n) => n + PAGE)} className="border border-ink px-5 py-2 text-sm hover:bg-ink hover:text-paper transition-colors">
-                  再看 {Math.min(PAGE, results.length - shown)} 件（還有 {results.length - shown} 件）
+                  {t.browser.more(Math.min(PAGE, results.length - shown), results.length - shown)}
                 </button>
               </div>
             )}
@@ -387,42 +384,43 @@ function usePageSearch(query: string, products: CardProduct[], gender: Gender, d
 
 function PageSearch({ query, onChange, searching, failed }: { query: string; onChange: (q: string) => void; searching: boolean; failed: boolean }) {
   const parsed = useMemo(() => parseQuery(query), [query]);
+  const { lang, t } = useLang();
   const understood = [
     ...parsed.categories, ...parsed.styles, ...parsed.colors, ...parsed.fibers, ...parsed.brands,
-  ].map((x) => x.label).concat(parsed.priceMax ? [`≤ $${parsed.priceMax.value}`] : [], parsed.keywords);
+  ].map((x) => lexiconLabel(lang, x.label)).concat(parsed.priceMax ? [`≤ $${parsed.priceMax.value}`] : [], parsed.keywords);
   return (
     <section aria-labelledby="search-label">
-      <h3 id="search-label" className="font-mono text-sm uppercase tracking-[0.14em] text-ink-faint mb-2">搜尋</h3>
+      <h3 id="search-label" className="font-mono text-sm uppercase tracking-[0.14em] text-ink-faint mb-2">{t.browser.search}</h3>
       <div className="relative">
         <input
           type="search"
           value={query}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="長袖、V 領、亞麻、黑色…"
-          aria-label="在這個分類裡搜尋"
+          placeholder={t.browser.searchPlaceholder}
+          aria-label={t.browser.searchLabel}
           className="w-full border border-ink/30 bg-paper px-3 py-2 text-sm focus:outline-none focus:border-ink"
         />
-        {searching && <span className="absolute right-9 top-1/2 -translate-y-1/2 text-xs text-ink-faint">搜尋中…</span>}
+        {searching && <span className="absolute right-9 top-1/2 -translate-y-1/2 text-xs text-ink-faint">{t.browser.searching}</span>}
       </div>
       {query.trim() && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5 text-sm">
-          {understood.length > 0 && <span className="text-ink-faint mr-1">解讀為</span>}
+          {understood.length > 0 && <span className="text-ink-faint mr-1">{t.search.interpretedAs}</span>}
           {understood.map((label) => (
             <span key={label} className="border border-rule px-2 py-0.5">{label}</span>
           ))}
           {parsed.corrections.map((c) => (
-            <span key={c.from} className="border border-rule px-2 py-0.5 text-ink-soft" title="拼字自動修正">
-              已修正：{c.from} → {c.to}
+            <span key={c.from} className="border border-rule px-2 py-0.5 text-ink-soft" title={t.search.correctedTitle}>
+              {t.search.corrected}{c.from} → {c.to}
             </span>
           ))}
           {parsed.unknown.map((u) => (
-            <span key={u} className="border border-ochre/50 bg-ochre-wash text-warn px-2 py-0.5" title="詞典裡沒有這個詞，搜尋時略過">
-              看不懂：{u}
+            <span key={u} className="border border-ochre/50 bg-ochre-wash text-warn px-2 py-0.5" title={t.search.unknownTitle}>
+              {t.search.unknown}{u}
             </span>
           ))}
-          {failed && <span className="text-warn">搜尋暫時失敗，請稍後再試。</span>}
+          {failed && <span className="text-warn">{t.browser.searchFailed}</span>}
           <button type="button" onClick={() => onChange("")} className="ml-auto text-ink-soft underline underline-offset-2 hover:text-ink">
-            清除
+            {t.browser.clearSearch}
           </button>
         </div>
       )}
