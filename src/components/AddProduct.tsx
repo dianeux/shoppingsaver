@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { BRANDS } from "@/domain/brands";
 import {
-  CLIP_BRANDS, clipTarget, draftFromClip, REPORTS_TO_HIDE, SUBMISSION_ERROR_COPY, SUBMISSION_TTL_DAYS,
-  validateSubmission, type ClipPayload, type SubmissionInput,
+  CLIP_BRANDS, clipTarget, draftFromClip, REPORTS_TO_HIDE, SUBMISSION_TTL_DAYS,
+  validateSubmission, type ClipPayload, type SubmissionError, type SubmissionInput,
 } from "@/domain/clip";
-import { formatComposition, materialScore, parseComposition } from "@/domain/composition";
-import { GENDER_LABEL, GENDERS, genderPath, type Gender } from "@/domain/gender";
-import { homeL1, L2_INDEX, TAXONOMY } from "@/domain/taxonomy";
+import { materialScore, parseComposition } from "@/domain/composition";
+import { GENDERS, type Gender } from "@/domain/gender";
+import { homeL1, TAXONOMY } from "@/domain/taxonomy";
+import { useLang } from "@/i18n/client";
+import { formatComposition, href, l1Name, l2Name } from "@/i18n/format";
 import { bookmarkletHref } from "@/lib/bookmarklet";
 import { thumb } from "@/lib/format";
 
@@ -32,12 +34,13 @@ function readPayload(hash: string): ClipPayload | null {
 export function AddProduct() {
   const hash = useSyncExternalStore(subscribeHash, () => window.location.hash, () => "");
   const payload = useMemo(() => readPayload(hash), [hash]);
+  const { t } = useLang();
   if (!payload) return <Install />;
   if (!clipTarget(payload.url)) {
     return (
       <Panel>
-        <p className="text-warn">這個頁面不是支援的商品頁：{payload.url}</p>
-        <p className="mt-2 text-sm text-ink-soft">請在 Uniqlo、GU、Zara 或 H&amp;M 美國官網的單一商品頁使用書籤。</p>
+        <p className="text-warn">{t.add.unsupported(payload.url)}</p>
+        <p className="mt-2 text-sm text-ink-soft">{t.add.unsupportedHelp}</p>
       </Panel>
     );
   }
@@ -50,48 +53,46 @@ function Panel({ children }: { children: React.ReactNode }) {
 
 function Install() {
   const link = useRef<HTMLAnchorElement>(null);
+  const { lang, t } = useLang();
   useEffect(() => {
     // React refuses javascript: URLs in JSX, so the bookmarklet is set on the element directly.
     link.current?.setAttribute("href", bookmarkletHref(window.location.origin));
   }, []);
-  const brands = (Object.keys(CLIP_BRANDS) as (keyof typeof CLIP_BRANDS)[]).map((b) => BRANDS[b].name).join("、");
+  const brands = (Object.keys(CLIP_BRANDS) as (keyof typeof CLIP_BRANDS)[]).map((b) => BRANDS[b].name).join(lang === "zh" ? "、" : ", ");
   return (
     <div className="max-w-2xl space-y-8">
       <section className="space-y-3 text-[15px] leading-relaxed text-ink-soft">
-        <p>
-          {brands} 不允許自動抓取，所以這幾個品牌的商品要由你在瀏覽時加入：在商品頁點一下書籤，就會帶著名稱、價格、顏色和成分回到這裡，確認後加入比較。
-        </p>
-        <p className="text-sm">資料是你的瀏覽器讀取你正在看的頁面，我們的伺服器不會連到品牌網站。</p>
+        <p>{t.add.intro(brands)}</p>
+        <p className="text-sm">{t.add.privacy}</p>
       </section>
 
       <section className="border border-rule p-6 space-y-4">
-        <h2 className="font-mono text-sm uppercase tracking-[0.14em] text-ink-faint">1. 安裝（只要一次）</h2>
-        <p className="text-sm text-ink-soft">把下面的按鈕拖到瀏覽器的書籤列（看不到書籤列：⌘ + Shift + B）。</p>
+        <h2 className="font-mono text-sm uppercase tracking-[0.14em] text-ink-faint">{t.add.step1}</h2>
+        <p className="text-sm text-ink-soft">{t.add.step1Help}</p>
         <a
           ref={link}
           href="#"
           onClick={(e) => {
             e.preventDefault();
-            alert("請把這個按鈕拖到書籤列，再到品牌的商品頁點它。");
+            alert(t.add.dragAlert);
           }}
           className="inline-block border-2 border-ink px-4 py-2 text-sm font-medium cursor-grab select-none"
         >
-          ＋ 加到 ShoppingSaver
+          {t.add.button}
         </a>
       </section>
 
       <section className="border border-rule p-6 space-y-2">
-        <h2 className="font-mono text-sm uppercase tracking-[0.14em] text-ink-faint">2. 在商品頁點書籤</h2>
+        <h2 className="font-mono text-sm uppercase tracking-[0.14em] text-ink-faint">{t.add.step2}</h2>
         <ol className="list-decimal pl-5 text-sm text-ink-soft space-y-1">
-          <li>打開 {brands} 美國官網的一件商品。</li>
-          <li>H&amp;M、Zara 的成分藏在收合區塊裡：先點開「Materials」或「Composition」。</li>
-          <li>點書籤列上的「＋ 加到 ShoppingSaver」，確認資料後按「加入」。</li>
+          <li>{t.add.step2a(brands)}</li>
+          <li>{t.add.step2b}</li>
+          <li>{t.add.step2c}</li>
         </ol>
       </section>
 
       <p className="text-xs text-ink-faint leading-relaxed">
-        加入的商品所有人都看得到，標示為「用戶提供」。我們無法自動確認它是否還在賣：超過 {SUBMISSION_TTL_DAYS} 天沒人重新加入就會自動隱藏，
-        或被 {REPORTS_TO_HIDE} 位訪客回報已下架時提早隱藏。電腦版瀏覽器適用；手機的書籤小工具不好安裝。
+        {t.add.fineprint(SUBMISSION_TTL_DAYS, REPORTS_TO_HIDE)}
       </p>
     </div>
   );
@@ -101,9 +102,11 @@ type Estimate = { compared: number; cheaperThan: number | null; valueScore: numb
 
 function Review({ payload }: { payload: ClipPayload }) {
   const target = clipTarget(payload.url)!;
+  const { lang, t } = useLang();
   const draft = useMemo(() => draftFromClip(payload), [payload]);
   const [form, setForm] = useState<SubmissionInput>(draft.input);
   const [status, setStatus] = useState<{ kind: "idle" | "saving" } | { kind: "done"; created: boolean } | { kind: "error"; messages: string[] }>({ kind: "idle" });
+  const errorText = (e: SubmissionError) => t.add.errors[e];
   const [est, setEst] = useState<Estimate | null>(null);
   const set = <K extends keyof SubmissionInput>(k: K, v: SubmissionInput[K]) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -134,18 +137,22 @@ function Review({ payload }: { payload: ClipPayload }) {
     const body = r ? await r.json().catch(() => ({})) : {};
     if (r?.ok) {
       setStatus({ kind: "done", created: !!body.created });
-      history.replaceState(null, "", "/add");
-    } else setStatus({ kind: "error", messages: body.messages ?? [body.error ?? "加入失敗，請稍後再試。"] });
+      history.replaceState(null, "", window.location.pathname);
+    } else {
+      const codes: SubmissionError[] | undefined = body.errors;
+      const message = body.error === "rate_limited" ? t.add.rateLimited : body.error === "conflict" ? t.add.conflict : t.add.failed;
+      setStatus({ kind: "error", messages: codes?.length ? codes.map(errorText) : [message] });
+    }
   }
 
   if (status.kind === "done") {
-    const where = genderPath(form.gender!, `/c/${form.l2}`);
+    const where = href(lang, form.gender!, `/c/${form.l2}`);
     return (
       <Panel>
-        <p className="text-lg">{status.created ? "已加入目錄" : "已更新價格與確認日期"}：{form.name}</p>
-        <p className="mt-2 text-sm text-ink-soft">頁面每小時更新，最晚一小時內會出現在分類頁。</p>
+        <p className="text-lg">{status.created ? t.add.created : t.add.updated}: {form.name}</p>
+        <p className="mt-2 text-sm text-ink-soft">{t.add.hourly}</p>
         <Link href={where} className="inline-block mt-4 border border-ink px-4 py-2 text-sm hover:bg-ink hover:text-paper">
-          去 {GENDER_LABEL[form.gender!]}「{L2_INDEX[form.l2!].name}」看看
+          {t.add.goTo(t.gender[form.gender!], l2Name(lang, form.l2!))}
         </Link>
       </Panel>
     );
@@ -160,7 +167,7 @@ function Review({ payload }: { payload: ClipPayload }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={thumb(form.imageUrl, 480) ?? form.imageUrl} alt="" className="w-full aspect-[4/5] object-cover bg-cloth-deep" />
         ) : (
-          <div className="w-full aspect-[4/5] bg-cloth-deep grid place-items-center text-xs text-ink-faint">無圖片</div>
+          <div className="w-full aspect-[4/5] bg-cloth-deep grid place-items-center text-xs text-ink-faint">{t.card.noImage}</div>
         )}
         <p className="mt-2 text-sm">{BRANDS[target.brand].name}</p>
         <a href={form.url} target="_blank" rel="noopener noreferrer" className="text-xs text-ink-soft underline break-all">{form.url}</a>
@@ -174,29 +181,29 @@ function Review({ payload }: { payload: ClipPayload }) {
         }}
       >
         <div>
-          <label className={label} htmlFor="name">名稱</label>
+          <label className={label} htmlFor="name">{t.add.name}</label>
           <input id="name" className={input} value={form.name} onChange={(e) => set("name", e.target.value)} />
         </div>
 
         <div className="grid sm:grid-cols-2 gap-5">
           <fieldset>
-            <legend className={label}>分區</legend>
+            <legend className={label}>{t.add.section}</legend>
             <div className="flex gap-4 text-sm">
               {GENDERS.map((g) => (
                 <label key={g} className="flex items-center gap-1.5">
-                  <input type="radio" name="gender" checked={form.gender === g} onChange={() => set("gender", g as Gender)} /> {GENDER_LABEL[g]}
+                  <input type="radio" name="gender" checked={form.gender === g} onChange={() => set("gender", g as Gender)} /> {t.gender[g]}
                 </label>
               ))}
             </div>
           </fieldset>
           <div>
-            <label className={label} htmlFor="l2">品類</label>
+            <label className={label} htmlFor="l2">{t.add.category}</label>
             <select id="l2" className={input} value={form.l2 ?? ""} onChange={(e) => set("l2", (e.target.value || null) as SubmissionInput["l2"])}>
-              <option value="">請選擇</option>
+              <option value="">{t.add.choose}</option>
               {TAXONOMY.filter((g) => homeL1(form.gender ?? "women").includes(g.l1)).map((g) => (
-                <optgroup key={g.l1} label={g.name}>
+                <optgroup key={g.l1} label={l1Name(lang, g.l1)}>
                   {g.children.map((c) => (
-                    <option key={c.l2} value={c.l2}>{c.name}</option>
+                    <option key={c.l2} value={c.l2}>{l2Name(lang, c.l2)}</option>
                   ))}
                 </optgroup>
               ))}
@@ -206,15 +213,15 @@ function Review({ payload }: { payload: ClipPayload }) {
 
         <div className="grid sm:grid-cols-3 gap-5">
           <div>
-            <label className={label} htmlFor="price">售價（USD）</label>
+            <label className={label} htmlFor="price">{t.add.price}</label>
             <input id="price" type="number" step="0.01" min="1" className={input} value={form.price ?? ""} onChange={(e) => set("price", e.target.value ? Number(e.target.value) : null)} />
           </div>
           <div>
-            <label className={label} htmlFor="list">原價（可空白）</label>
+            <label className={label} htmlFor="list">{t.add.listPrice}</label>
             <input id="list" type="number" step="0.01" className={input} value={form.listPrice ?? ""} onChange={(e) => set("listPrice", e.target.value ? Number(e.target.value) : null)} />
           </div>
           <div>
-            <label className={label} htmlFor="color">這個價格的顏色</label>
+            <label className={label} htmlFor="color">{t.add.priceColor}</label>
             <select id="color" className={input} value={form.priceColor ?? ""} onChange={(e) => set("priceColor", e.target.value || null)}>
               <option value="">—</option>
               {form.colors.map((c) => (
@@ -225,16 +232,16 @@ function Review({ payload }: { payload: ClipPayload }) {
         </div>
 
         <div>
-          <label className={label} htmlFor="comp">成分</label>
-          <textarea id="comp" rows={2} className={input} value={form.compositionText} onChange={(e) => set("compositionText", e.target.value)} placeholder="例如：60% cotton, 40% polyester" />
+          <label className={label} htmlFor="comp">{t.add.composition}</label>
+          <textarea id="comp" rows={2} className={input} value={form.compositionText} onChange={(e) => set("compositionText", e.target.value)} placeholder={t.add.compositionPlaceholder} />
           {!form.compositionText && (
             <p className="mt-1.5 text-sm text-warn">
-              沒有抓到成分。回到商品頁點開「Materials」或「Composition」區塊，再按一次書籤；或直接把成分貼在這裡。
+              {t.add.noComposition}
             </p>
           )}
           {form.compositionText && (
             <p className={`mt-1.5 text-sm ${parsed.ok ? "text-ink-soft" : "text-warn"}`}>
-              {parsed.ok ? `讀成：${formatComposition(parsed.composition.main)}（材質分 ${Math.round((material ?? 0) * 100)}）` : "讀不懂這段成分，請寫成「百分比 + 纖維」。"}
+              {parsed.ok ? t.add.readAs(formatComposition(lang, parsed.composition.main), Math.round((material ?? 0) * 100)) : t.add.unreadable}
             </p>
           )}
         </div>
@@ -242,14 +249,14 @@ function Review({ payload }: { payload: ClipPayload }) {
         {est && estKey && (
           <p className="border-l-2 border-value pl-3 text-sm text-ink-soft">
             {est.compared > 0
-              ? <>在目錄的 {est.compared} 件同類商品中，比 {est.cheaperThan}% 便宜；性價比分數約 <strong className="text-value text-base">{est.valueScore}</strong>。</>
-              : <>目錄裡還沒有這個分類的同類商品可以比較。</>}
+              ? <>{t.add.estimate(est.compared, est.cheaperThan)} <strong className="text-value text-base">{est.valueScore}</strong></>
+              : t.add.noComparable}
           </p>
         )}
 
         {!check.ok && (
           <ul className="text-sm text-warn list-disc pl-5">
-            {check.errors.map((e) => <li key={e}>{SUBMISSION_ERROR_COPY[e]}</li>)}
+            {check.errors.map((e) => <li key={e}>{errorText(e)}</li>)}
           </ul>
         )}
         {status.kind === "error" && (
@@ -260,9 +267,9 @@ function Review({ payload }: { payload: ClipPayload }) {
 
         <div className="flex items-center gap-4">
           <button type="submit" disabled={!check.ok || status.kind === "saving"} className="bg-ink text-paper px-6 py-2.5 text-sm disabled:opacity-40">
-            {status.kind === "saving" ? "加入中…" : "加入目錄"}
+            {status.kind === "saving" ? t.add.saving : t.add.submit}
           </button>
-          <p className="text-xs text-ink-faint">加入後所有人都看得到，標示為「用戶提供」。</p>
+          <p className="text-xs text-ink-faint">{t.add.publicNote}</p>
         </div>
       </form>
     </div>

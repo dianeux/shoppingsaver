@@ -2,6 +2,7 @@ import type { BrandId } from "@/domain/brands";
 import type { ColorFamily } from "@/domain/colors";
 import type { CompositionStatus } from "@/domain/composition";
 import type { Gender } from "@/domain/gender";
+import type { Fiber } from "@/domain/materials";
 import type { L2 } from "@/domain/taxonomy";
 
 /** What the browse UI receives per product — enough to filter, sort and rescore client-side. */
@@ -22,7 +23,8 @@ export interface CardProduct {
   colors: { raw: string; family: ColorFamily | null }[];
   colorFamilies: ColorFamily[];
   sizes: string[];
-  compositionText: string | null;
+  /** Main-part fiber shares, formatted per language on the client. Empty when not extracted. */
+  fibers: { fiber: Fiber; percentage: number; recycled: boolean; organic: boolean }[];
   compositionStatus: CompositionStatus;
   dominantFiber: string | null;
   materialScore: number | null;

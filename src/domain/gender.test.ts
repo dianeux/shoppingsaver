@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mujiGenders } from "@/pipeline/adapters/muji-mapping";
-import { genderOfPath, genderPath, productId, sectionTitle } from "./gender";
+import { genderOfPath, genderPath, productId } from "./gender";
 import { homeL1, isHomeL1 } from "./taxonomy";
 
 describe("sections", () => {
@@ -21,11 +21,6 @@ describe("sections", () => {
   it("keeps women's product ids stable and gives men's rows their own", () => {
     expect(productId("muji", "123", "women")).toBe("muji:123");
     expect(productId("muji", "123", "men")).toBe("muji:men:123");
-  });
-
-  it("titles men's pages", () => {
-    expect(sectionTitle("women", "Tops")).toBe("Tops");
-    expect(sectionTitle("men", "Tops")).toBe("男裝 Tops");
   });
 
   it("drops the dresses group from the men's home", () => {

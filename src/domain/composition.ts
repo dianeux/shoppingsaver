@@ -194,9 +194,3 @@ export function dominantFiber(main: FiberShare[]): Fiber | null {
   return [...main].sort((a, b) => b.percentage - a.percentage)[0].fiber;
 }
 
-export function formatComposition(main: FiberShare[]): string {
-  return [...main]
-    .sort((a, b) => b.percentage - a.percentage)
-    .map((f) => `${f.percentage}% ${f.recycled ? "再生" : ""}${f.organic ? "有機" : ""}${FIBERS[f.fiber].label}`)
-    .join(" · ");
-}

@@ -1,9 +1,11 @@
 "use client";
 
+import { useLang } from "@/i18n/client";
 import { toggleFavorite, useFavorites } from "@/lib/favorites";
 
 export function FavoriteButton({ id, name, className = "" }: { id: string; name: string; className?: string }) {
   const on = useFavorites().includes(id);
+  const { t } = useLang();
   return (
     <button
       type="button"
@@ -14,8 +16,8 @@ export function FavoriteButton({ id, name, className = "" }: { id: string; name:
         toggleFavorite(id);
       }}
       aria-pressed={on}
-      aria-label={on ? `從最愛移除 ${name}` : `加入最愛 ${name}`}
-      title={on ? "從最愛移除" : "加入最愛"}
+      aria-label={`${on ? t.card.removeFavorite : t.card.addFavorite}: ${name}`}
+      title={on ? t.card.removeFavorite : t.card.addFavorite}
       className={`grid place-items-center h-9 w-9 rounded-full bg-paper/90 backdrop-blur-sm border border-ink/10 shadow-[0_2px_8px_-4px_rgba(28,26,23,.5)] transition-transform hover:scale-105 active:scale-95 ${className}`}
     >
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden className={on ? "text-madder" : "text-ink-soft"}>

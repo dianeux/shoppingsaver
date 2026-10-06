@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { BRANDS, type BrandId } from "@/domain/brands";
 import { DEFAULT_MATERIAL_WEIGHT } from "@/domain/scoring";
+import { useLang } from "@/i18n/client";
+import { formatComposition } from "@/i18n/format";
+import { localePath } from "@/i18n/locales";
 import type { FavoriteProduct } from "@/lib/catalog";
 import { removeFavorites, useFavorites } from "@/lib/favorites";
 import { thumb, usd } from "@/lib/format";
@@ -14,6 +17,7 @@ type State = { status: "loading" } | { status: "error" } | { status: "ready"; pr
 
 export function FavoritesView() {
   const ids = useFavorites();
+  const { lang, t } = useLang();
   const [state, setState] = useState<State>({ status: "loading" });
 
   // Fetch only when the list gains ids we haven't loaded; removals filter locally.
@@ -60,18 +64,18 @@ export function FavoritesView() {
   if (ids.length === 0) {
     return (
       <div className="stitch bg-paper border border-rule p-10 text-center max-w-xl mx-auto">
-        <p className="font-display text-2xl mb-2">還沒有收藏任何商品</p>
+        <p className="font-display text-2xl mb-2">{t.favorites.emptyTitle}</p>
         <p className="text-sm text-ink-soft">
-          在商品圖左下角點愛心就能加入最愛。清單存在這台裝置的瀏覽器裡，不需要登入。
+          {t.favorites.emptyNote}
         </p>
-        <Link href="/" className="inline-block mt-5 border border-ink px-5 py-2 text-sm hover:bg-ink hover:text-paper transition-colors">
-          去逛逛
+        <Link href={localePath(lang, "/")} className="inline-block mt-5 border border-ink px-5 py-2 text-sm hover:bg-ink hover:text-paper transition-colors">
+          {t.favorites.browse}
         </Link>
       </div>
     );
   }
-  if (state.status === "error") return <p className="py-16 text-center text-warn">載入最愛時發生錯誤，請重新整理頁面。</p>;
-  if (state.status === "loading" && !known) return <p className="py-16 text-center text-ink-faint">載入中…</p>;
+  if (state.status === "error") return <p className="py-16 text-center text-warn">{t.favorites.loadError}</p>;
+  if (state.status === "loading" && !known) return <p className="py-16 text-center text-ink-faint">{t.favorites.loading}</p>;
 
   const available = groups.brands.flatMap((g) => g.items);
   const w = DEFAULT_MATERIAL_WEIGHT;
@@ -81,25 +85,25 @@ export function FavoritesView() {
     <div className="max-w-4xl space-y-14">
       {available.length > 0 && (
         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border border-rule px-4 py-3">
-          <span className="text-sm text-ink-soft">{groups.brands.length} 家店 · {available.length} 件</span>
+          <span className="text-sm text-ink-soft">{t.favorites.summary(groups.brands.length, available.length)}</span>
           <span className="ml-auto text-sm">
-            全部合計 <strong className="text-xl font-medium tabular-nums">{usd(sumPrices(available))}</strong>
-            {available.some(varies) && <span className="text-xs ml-0.5">起</span>}
+            {t.favorites.grandTotal} <strong className="text-xl font-medium tabular-nums">{usd(sumPrices(available))}</strong>
+            {available.some(varies) && <span className="text-xs ml-0.5">{t.card.from}</span>}
           </span>
-          <span className="basis-full text-xs text-ink-faint">以每件目前的最低售價計算（不含運費與稅）；已售完或下架的商品不計入。</span>
+          <span className="basis-full text-xs text-ink-faint">{t.favorites.totalNote}</span>
         </div>
       )}
       {groups.brands.map((g) => (
-        <section key={g.brand} aria-label={`${BRANDS[g.brand].name}，${g.items.length} 件`}>
+        <section key={g.brand} aria-label={`${BRANDS[g.brand].name}: ${t.home.count(g.items.length)}`}>
           <ul className="divide-y divide-rule">
             {g.items.map((p) => <FavoriteRow key={p.id} p={p} score={scoreOf(p)} />)}
           </ul>
           <div className="flex items-baseline justify-end gap-5 border-t border-ink pt-3">
             <span className="text-xs uppercase tracking-[0.18em] text-ink-soft">{BRANDS[g.brand].name}</span>
             <span className="text-sm text-ink-soft">
-              Total{" "}
+              {t.favorites.total}{" "}
               <strong className="text-xl font-medium text-ink tabular-nums">{usd(g.total)}</strong>
-              {g.items.some(varies) && <span className="text-xs ml-0.5">起</span>}
+              {g.items.some(varies) && <span className="text-xs ml-0.5">{t.card.from}</span>}
             </span>
           </div>
         </section>
@@ -107,14 +111,14 @@ export function FavoritesView() {
       {groups.unavailable.length > 0 && (
         <section>
           <div className="flex flex-wrap items-baseline gap-3 border-b border-rule pb-2 mb-4">
-            <h2 className="font-display text-2xl">買不到了</h2>
-            <span className="text-xs text-ink-faint">{groups.unavailable.length} 件已售完或已下架；補貨後會自動回到上面</span>
+            <h2 className="font-display text-2xl">{t.favorites.unavailable}</h2>
+            <span className="text-xs text-ink-faint">{t.favorites.unavailableNote(groups.unavailable.length)}</span>
             <button
               type="button"
               onClick={() => removeFavorites(groups.unavailable.map((p) => p.id))}
               className="ml-auto text-xs underline underline-offset-2 text-ink-soft hover:text-ink"
             >
-              全部移除
+              {t.favorites.removeAll}
             </button>
           </div>
           <ul className="divide-y divide-dashed divide-rule">
@@ -126,7 +130,7 @@ export function FavoritesView() {
                   <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-faint">{BRANDS[p.brand].name}</p>
                   <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-sm line-clamp-1 hover:underline">{p.name}</a>
                   <p className="font-mono text-[11px] text-ink-faint">
-                    {p.availability === "sold_out" ? "已售完" : "已下架"} · 最後價格 {usd(p.salePrice)}
+                    {p.availability === "sold_out" ? t.favorites.soldOut : t.favorites.gone} · {t.favorites.lastPrice} {usd(p.salePrice)}
                   </p>
                 </div>
                 <FavoriteButton id={p.id} name={p.name} />
@@ -136,7 +140,7 @@ export function FavoritesView() {
         </section>
       )}
       {available.length === 0 && groups.unavailable.length === 0 && (
-        <p className="py-16 text-center text-ink-faint">收藏的商品已不在目錄中。</p>
+        <p className="py-16 text-center text-ink-faint">{t.favorites.allGone}</p>
       )}
     </div>
   );
@@ -147,12 +151,13 @@ const varies = (p: FavoriteProduct) => p.maxPrice > p.salePrice;
 
 /** One favorite as a cart-style row: photo, details, price on the right (under the details on phones). */
 function FavoriteRow({ p, score }: { p: FavoriteProduct; score: number }) {
+  const { lang, t } = useLang();
   const onSale = p.salePrice < p.listPrice || !!p.drop;
   const was = p.drop ? p.drop.baselinePrice : p.salePrice < p.listPrice ? p.listPrice : null;
   const price = (
     <span className="whitespace-nowrap">
       <span className={`text-lg font-medium tabular-nums ${onSale ? "text-madder" : ""}`}>{usd(p.salePrice)}</span>
-      {varies(p) && <span className={`text-xs ml-0.5 ${onSale ? "text-madder" : ""}`}>起</span>}
+      {varies(p) && <span className={`text-xs ml-0.5 ${onSale ? "text-madder" : ""}`}>{t.card.from}</span>}
       {was !== null && <span className="ml-2 text-sm text-ink-faint line-through tabular-nums">{usd(was)}</span>}
     </span>
   );
@@ -164,11 +169,11 @@ function FavoriteRow({ p, score }: { p: FavoriteProduct; score: number }) {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={thumb(p.imageUrl, 320)!} alt={p.name} loading="lazy" className="h-full w-full object-cover" />
           ) : (
-            <span className="h-full w-full grid place-items-center text-xs text-ink-faint">無圖片</span>
+            <span className="h-full w-full grid place-items-center text-xs text-ink-faint">{t.card.noImage}</span>
           )}
         </a>
         <FavoriteButton id={p.id} name={p.name} className="absolute left-1.5 bottom-1.5 !h-7 !w-7" />
-        <span className="absolute right-1.5 bottom-1.5 bg-paper px-1.5 py-0.5 text-xs font-medium leading-none tabular-nums text-value" title="性價比分數（0–100）">
+        <span className="absolute right-1.5 bottom-1.5 bg-paper px-1.5 py-0.5 text-xs font-medium leading-none tabular-nums text-value" title={t.card.score}>
           {score}
         </span>
       </div>
@@ -192,9 +197,9 @@ function FavoriteRow({ p, score }: { p: FavoriteProduct; score: number }) {
           {p.name}
         </a>
         <div className="sm:hidden">{price}</div>
-        {p.drop && <span className="self-start text-xs text-madder">降價 {Math.round(p.drop.pct * 100)}%・比前一天便宜</span>}
-        {varies(p) && p.priceColor && <p className="text-xs text-ink-soft">{p.priceColor} 的價格；其他顏色最高 {usd(p.maxPrice)}</p>}
-        {p.compositionText && <p className="text-xs text-ink-soft">{p.compositionText}</p>}
+        {p.drop && <span className="self-start text-xs text-madder">{t.card.dropped(Math.round(p.drop.pct * 100))}</span>}
+        {varies(p) && p.priceColor && <p className="text-xs text-ink-soft">{t.card.priceColor(p.priceColor, usd(p.maxPrice))}</p>}
+        {p.fibers.length > 0 && <p className="text-xs text-ink-soft">{formatComposition(lang, p.fibers)}</p>}
       </div>
 
       <div className="hidden sm:block pt-0.5 text-right">{price}</div>

@@ -4,7 +4,7 @@ import { db } from "@/db/client";
 import { crawlRuns, priceDrops, products } from "@/db/schema";
 import { BRANDS, type BrandId } from "@/domain/brands";
 import { REPORTS_TO_HIDE, SUBMISSION_TTL_DAYS } from "@/domain/clip";
-import { formatComposition, type Composition } from "@/domain/composition";
+import type { Composition } from "@/domain/composition";
 import type { Gender } from "@/domain/gender";
 import { scoreProduct, type ParsedQuery } from "@/domain/search";
 import { DROP_WINDOW_DAYS } from "@/pipeline/drops";
@@ -48,7 +48,7 @@ const cardColumns = {
 type Row = { [K in keyof typeof cardColumns]: unknown } & Record<string, unknown>;
 
 function toCard(r: Row): CardProduct {
-  const comp = r.composition as { main: Parameters<typeof formatComposition>[0] } | null;
+  const comp = r.composition as Composition | null;
   return {
     id: r.id as string,
     brand: r.brand as BrandId,
@@ -64,7 +64,7 @@ function toCard(r: Row): CardProduct {
     colors: (r.colors as CardProduct["colors"]).map((c) => ({ raw: c.raw, family: c.family })),
     colorFamilies: r.colorFamilies as CardProduct["colorFamilies"],
     sizes: r.sizes as string[],
-    compositionText: comp ? formatComposition(comp.main) : null,
+    fibers: (comp?.main ?? []).map((f) => ({ fiber: f.fiber, percentage: f.percentage, recycled: f.recycled, organic: f.organic })),
     compositionStatus: r.compositionStatus as CardProduct["compositionStatus"],
     dominantFiber: (r.dominantFiber as string | null) ?? null,
     materialScore: (r.materialScore as number | null) ?? null,
