@@ -25,7 +25,7 @@ export function sectionTitle(lang: Locale, gender: Gender, title: string): strin
 }
 
 /** English fiber names where the first synonym isn't the right display name. */
-const FIBER_EN: Partial<Record<Fiber, string>> = { elasterell: "elasterell-P", vicuna: "vicuña", faux_leather: "faux leather" };
+const FIBER_EN: Partial<Record<Fiber, string>> = { elasterell: "elasterell-P", vicuna: "vicuña", faux_leather: "faux leather", straw: "straw" };
 
 export function fiberLabel(lang: Locale, f: Fiber): string {
   return lang === "zh" ? FIBERS[f].label : (FIBER_EN[f] ?? FIBERS[f].synonyms[0]);
@@ -48,7 +48,7 @@ const LEXICON_EN: Record<string, string> = {
   "Polo 衫": "Polos", 外套: "Outerwear", 夾克: "Jackets", 大衣: "Coats", 羽絨與鋪棉: "Down & padded", 牛仔褲: "Jeans", 長褲: "Pants",
   棉褲: "Sweatpants", 裙子: "Skirts", 短褲: "Shorts", 洋裝: "Dresses", 連身褲: "Jumpsuits", 內衣: "Bras", 內褲: "Underwear",
   打底: "Base layers", 家居服: "Loungewear", 睡衣: "Pajamas", 運動上衣: "Active tops", 運動下著: "Active bottoms", 襪子: "Socks",
-  圍巾: "Scarves", 帽子: "Hats", 包款: "Bags",
+  圍巾: "Scarves", 帽子與頭飾: "Hats & headwear", 包款: "Bags",
   低胸: "Low neckline", "V 領": "V-neck", 圓領: "Crew neck", 方領: "Square neck", 一字領: "Boat neck", 高領: "High neck",
   露肩: "Off-shoulder", 平口: "Strapless", 細肩帶: "Spaghetti strap", 無袖: "Sleeveless", 短袖: "Short sleeve", 長袖: "Long sleeve",
   七分袖: "3/4 sleeve", 短版: "Cropped", 長版: "Longline", 寬鬆: "Relaxed", 修身: "Fitted", 寬褲: "Wide-leg", 直筒: "Straight",

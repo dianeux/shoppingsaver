@@ -20,7 +20,7 @@ export const RECYCLED_SYNTHETIC_COEFFICIENT = 0.0;
 export const ELASTANE_EXEMPT_MAX_PCT = 5;
 
 export type Fiber =
-  | "cotton" | "linen" | "hemp" | "ramie" | "jute" | "kapok" | "silk" | "wool" | "cashmere" | "alpaca" | "vicuna" | "mohair" | "yak" | "camel" | "down" | "feather" | "leather"
+  | "cotton" | "linen" | "hemp" | "ramie" | "jute" | "straw" | "kapok" | "silk" | "wool" | "cashmere" | "alpaca" | "vicuna" | "mohair" | "yak" | "camel" | "down" | "feather" | "leather"
   | "lyocell" | "modal" | "cupro" | "viscose" | "acetate" | "triacetate" | "azlon"
   | "polyester" | "elasterell" | "nylon" | "acrylic" | "elastane" | "polypropylene" | "polyethylene" | "polyurethane" | "metallic" | "faux_leather" | "synthetic"
   | "other";
@@ -30,6 +30,8 @@ export const FIBERS: Record<Fiber, { class: FiberClass; label: string; synonyms:
   linen: { class: "natural", label: "亞麻", synonyms: ["linen", "flax", "european flax", "french linen"] },
   hemp: { class: "natural", label: "麻", synonyms: ["hemp"] },
   jute: { class: "natural", label: "黃麻", synonyms: ["jute"] },
+  // Woven palm/plant fiber (panama hats, raffia bags).
+  straw: { class: "natural", label: "草編", synonyms: ["toquilla straw", "toquilla", "raffia", "straw"] },
   ramie: { class: "natural", label: "苧麻", synonyms: ["ramie"] },
   kapok: { class: "natural", label: "木棉", synonyms: ["kapok"] },
   silk: { class: "natural", label: "絲", synonyms: ["silk", "mulberry silk"] },
@@ -63,7 +65,7 @@ export const FIBERS: Record<Fiber, { class: FiberClass; label: string; synonyms:
   nylon: { class: "synthetic", label: "尼龍", synonyms: ["nylon", "polyamide", "recycled nylon", "recycled polyamide"] },
   acrylic: { class: "synthetic", label: "壓克力", synonyms: ["acrylic", "modacrylic"] },
   // Rubber here is the elastic thread in socks and waistbands.
-  elastane: { class: "synthetic", label: "彈性纖維", synonyms: ["elastane", "spandex", "lycra", "elastic", "polyurethane elastic", "rubber"] },
+  elastane: { class: "synthetic", label: "彈性纖維", synonyms: ["elastane", "spandex", "lycra", "elastic", "polyurethane elastic", "rubber", "stretch"] },
   polypropylene: { class: "synthetic", label: "聚丙烯", synonyms: ["polypropylene"] },
   polyethylene: { class: "synthetic", label: "聚乙烯", synonyms: ["polyethylene"] },
   faux_leather: {

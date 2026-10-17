@@ -13,10 +13,17 @@ import { mapQuinceCategory, QUINCE_MAPPING_VERSION, type QuinceClassification } 
  * lives only on the product page, which is fetched just for new/changed products.
  */
 const ORIGIN = "https://www.quince.com";
-/** Each section's apparel collection and the listing's gender value for it. */
-const SECTIONS: { gender: Gender; collection: string; listingGender: string }[] = [
-  { gender: "women", collection: "/shop/women/apparel", listingGender: "female" },
-  { gender: "men", collection: "/shop/men/apparel", listingGender: "male" },
+/**
+ * Collections to list, and which section each listing gender goes to. Apparel is
+ * split by gender; accessories live outside it in shared collections, where unisex
+ * items go into both sections.
+ */
+const ACCESSORY_GENDERS: Record<string, Gender[]> = { female: ["women"], male: ["men"], unisex: ["women", "men"] };
+const COLLECTIONS: { path: string; genders: Record<string, Gender[]> }[] = [
+  { path: "/shop/women/apparel", genders: { female: ["women"] } },
+  { path: "/shop/men/apparel", genders: { male: ["men"] } },
+  { path: "/shop/bags-&-accessories/hats-scarves-and-gloves", genders: ACCESSORY_GENDERS },
+  { path: "/shop/bags-&-accessories/bags", genders: ACCESSORY_GENDERS },
 ];
 const WIDGET_API = "https://api-prod-public.onequince.com/presentation-layer-service/widgets/fetch/v1";
 const PAGE_SIZE = 100;
@@ -122,10 +129,10 @@ export interface QuinceGroup {
   colors: Map<string, QuinceCardVariant>;
 }
 
-export function groupItems(list: QuinceProductItem[], listingGender = "female"): QuinceGroup[] {
+export function groupItems(list: QuinceProductItem[], listingGenders: string[] = ["female"]): QuinceGroup[] {
   const groups = new Map<string, QuinceGroup>();
   for (const item of list) {
-    if (item.gender !== listingGender) continue;
+    if (!listingGenders.includes(item.gender)) continue;
     const g = groups.get(item.productId) ?? { item, colors: new Map() };
     for (const cv of item.cardVariants) if (!g.colors.has(cv.displayConfig.value)) g.colors.set(cv.displayConfig.value, cv);
     groups.set(item.productId, g);
@@ -227,8 +234,17 @@ export const quinceAdapter: BrandAdapter = {
   mappingVersion: QUINCE_MAPPING_VERSION,
 
   async *list() {
-    for (const { gender, collection, listingGender } of SECTIONS) {
-      for (const g of groupItems(await fetchListing(collection), listingGender)) yield toRawProduct(g, gender);
+    // A product can sit in more than one collection; list it once per section.
+    const seen = new Set<string>();
+    for (const { path, genders } of COLLECTIONS) {
+      for (const g of groupItems(await fetchListing(path), Object.keys(genders))) {
+        for (const gender of genders[g.item.gender]) {
+          const key = `${gender}:${g.item.productId}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          yield toRawProduct(g, gender);
+        }
+      }
     }
   },
 

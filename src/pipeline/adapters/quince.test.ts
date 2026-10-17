@@ -113,3 +113,28 @@ describe("mapQuinceCategory — swimwear outside the Swimwear department", () =>
     expect(mapQuinceCategory('Italian Swim Trunks - 7"', { department: "Bottoms", subdepartment: "Shorts", class: "Shorts" })).toEqual({ excluded: "swimwear" });
   });
 });
+
+describe("Quince accessories", () => {
+  const soft = (cls: string) => ({ department: "Soft Accessories", subdepartment: "Cashmere", class: cls });
+  it("maps hats (incl. headbands), scarves and bags; leaves gloves out", () => {
+    expect(mapQuinceCategory("Mongolian Cashmere Twist Headband", soft("Hat"))).toEqual({ l2: "hats" });
+    expect(mapQuinceCategory("Cashmere Wrap", soft("Scarf/Wrap"))).toEqual({ l2: "scarves" });
+    expect(mapQuinceCategory("Cashmere Touchscreen Gloves", soft("Gloves"))).toEqual({ excluded: "gloves" });
+    expect(mapQuinceCategory("Esme Suede Slouchy Shoulder Bag", { department: "Bags", subdepartment: "Leather", class: "Shoulder" })).toEqual({ l2: "bags" });
+  });
+
+  it("accepts several listing genders (accessory collections mix women's and unisex)", () => {
+    const base = { productId: "p", title: "x", slug: "x", classification: null, cardVariants: [] };
+    const groups = groupItems([{ ...base, productId: "a", gender: "female" }, { ...base, productId: "b", gender: "unisex" }, { ...base, productId: "c", gender: "male" }], ["female", "unisex"]);
+    expect(groups.map((g) => g.item.productId)).toEqual(["a", "b"]);
+  });
+});
+
+describe("Quince bags collection extras", () => {
+  it("excludes luggage, tech accessories and belts; keeps backpacks", () => {
+    expect(mapQuinceCategory("Carry-On", { department: "Luggage", subdepartment: "Other", class: "Other" })).toEqual({ excluded: "luggage" });
+    expect(mapQuinceCategory("Leather Watch Band", { department: "Tech Accessories", subdepartment: "Leather", class: "Watch Bands" })).toEqual({ excluded: "tech accessories" });
+    expect(mapQuinceCategory("Leather Belt", { department: "Belts", subdepartment: "Leather", class: "Medium" })).toEqual({ excluded: "belts" });
+    expect(mapQuinceCategory("Everyday Backpack", { department: "Unisex", subdepartment: "Accessories", class: "Backpacks" })).toEqual({ l2: "bags" });
+  });
+});

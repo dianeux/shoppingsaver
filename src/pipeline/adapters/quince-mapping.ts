@@ -6,7 +6,7 @@ import type { L2 } from "@/domain/taxonomy";
  * (e.g. "Bottoms / Denim / Pants"). Rules run in order; first match wins.
  * Bump the version on any edit.
  */
-export const QUINCE_MAPPING_VERSION = "quince-2026-09-30.1";
+export const QUINCE_MAPPING_VERSION = "quince-2026-10-17.1";
 
 export interface QuinceClassification {
   department?: string | null;
@@ -52,6 +52,20 @@ export function mapQuinceCategory(title: string, c: QuinceClassification): Quinc
       return { l2: sub === "Bottoms" ? "active-bottoms" : "active-tops" };
     case "Lounge":
       return { l2: cls === "Pajamas" ? "pajamas" : "loungewear" };
+    case "Soft Accessories":
+      if (cls === "Hat") return { l2: "hats" }; // beanies, caps and headbands
+      if (cls === "Scarf/Wrap") return { l2: "scarves" };
+      if (/glove|mitten/i.test(cls) || /\b(gloves?|mittens?)\b/.test(t)) return { excluded: "gloves" }; // not in the taxonomy
+      return null;
+    case "Bags":
+      return { l2: "bags" };
+    case "Unisex":
+      return cls === "Backpacks" ? { l2: "bags" } : null;
+    // Listed with bags but outside the taxonomy.
+    case "Luggage":
+    case "Tech Accessories":
+    case "Belts":
+      return { excluded: dept.toLowerCase() };
     case "Intimates":
       if (cls === "Bralette") return { l2: "bras" };
       if (cls === "Underwear") return { l2: "underwear" };
