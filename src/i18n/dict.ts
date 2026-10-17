@@ -224,7 +224,7 @@ const zh = {
     bras: "內衣", underwear: "內褲", "base-layers": "打底",
     loungewear: "家居服", pajamas: "睡衣",
     "active-tops": "運動上衣", "active-bottoms": "運動下著",
-    socks: "襪子", scarves: "圍巾", hats: "帽子", bags: "包款",
+    socks: "襪子", scarves: "圍巾", hats: "帽子與頭飾", bags: "包款",
     formal: "正裝與宴會服",
   } satisfies Record<L2, string>,
   colors: {
@@ -465,7 +465,7 @@ const en: Dict = {
     bras: "Bras", underwear: "Underwear", "base-layers": "Base layers",
     loungewear: "Loungewear", pajamas: "Pajamas",
     "active-tops": "Active tops", "active-bottoms": "Active bottoms",
-    socks: "Socks", scarves: "Scarves", hats: "Hats", bags: "Bags",
+    socks: "Socks", scarves: "Scarves", hats: "Hats & headwear", bags: "Bags",
     formal: "Formal & occasion",
   },
   colors: {
