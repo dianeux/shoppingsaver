@@ -86,6 +86,7 @@ async function runBrand(adapter: BrandAdapter, budget: LlmBudget): Promise<void>
           .select({
             id: products.id, contentHash: products.contentHash, compositionStatus: products.compositionStatus,
             compositionRaw: products.compositionRaw, composition: products.composition, compositionSource: products.compositionSource,
+            active: products.active,
           })
           .from(products)
           .where(eq(products.brand, brand))
@@ -191,9 +192,13 @@ async function runBrand(adapter: BrandAdapter, budget: LlmBudget): Promise<void>
       if (stats.kept % 50 === 0) console.log(`[${brand}] ${stats.kept} products indexed…`);
     }
 
-    const previouslyActive = [...existing.keys()].length;
+    // Compare against products that are currently listed: rows deactivated long ago
+    // accumulate and would otherwise eventually block every deactivation.
+    const active = [...existing.values()].filter((r) => r.active).map((r) => r.id);
+    const previouslyActive = active.length;
     if (stats.kept >= previouslyActive * MIN_LISTED_RATIO_TO_DEACTIVATE) {
-      const gone = [...existing.keys()].filter((id) => !seen.includes(id));
+      const seenIds = new Set(seen);
+      const gone = active.filter((id) => !seenIds.has(id));
       for (let i = 0; i < gone.length; i += 500) {
         await db.update(products).set({ active: false }).where(inArray(products.id, gone.slice(i, i + 500)));
       }
