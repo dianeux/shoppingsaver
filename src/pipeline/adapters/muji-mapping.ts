@@ -7,7 +7,7 @@ import type { L2 } from "@/domain/taxonomy";
  * with tags; the same rules serve both sections.
  * Rules are checked in order; the first match wins. Bump the version on any edit.
  */
-export const MUJI_MAPPING_VERSION = "muji-2026-09-29.1";
+export const MUJI_MAPPING_VERSION = "muji-2026-10-18.1";
 
 interface Rule {
   productType: RegExp;
@@ -71,7 +71,8 @@ const TITLE_RULES: { productType: RegExp; title: RegExp; l2: L2 | "excluded" }[]
   { productType: /^Winter Accessories$/, title: /\b(beanie|hat|cap)\b/i, l2: "hats" },
   { productType: /^Winter Accessories$/, title: /\b(scarf|stole|muffler|snood)\b/i, l2: "scarves" },
   // Not in the canonical taxonomy (PRD ch.7) — excluded on purpose, so they don't raise alerts.
-  { productType: /^Winter Accessories$/, title: /\b(gloves?|mittens?|earmuffs?)\b/i, l2: "excluded" },
+  { productType: /^Winter Accessories$/, title: /\b(gloves?|mittens?)\b/i, l2: "gloves" },
+  { productType: /^Winter Accessories$/, title: /\b(earmuffs?|ear warmers?)\b/i, l2: "excluded" },
 ];
 
 export type MujiMapping = { l2: L2 } | { excluded: true } | null;

@@ -76,7 +76,10 @@ export const TAXONOMY = [
     children: [
       { l2: "socks", name: "襪子" },
       { l2: "scarves", name: "圍巾" },
-      { l2: "hats", name: "帽子與頭飾" },
+      { l2: "hats", name: "帽子" },
+      { l2: "gloves", name: "手套" },
+      { l2: "belts", name: "皮帶" },
+      { l2: "jewelry-hair", name: "首飾與髮飾" },
       { l2: "bags", name: "包款" },
     ],
   },

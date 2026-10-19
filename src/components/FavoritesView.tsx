@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { BRANDS, type BrandId } from "@/domain/brands";
+import { unitPrice } from "@/domain/pack";
 import { DEFAULT_MATERIAL_WEIGHT } from "@/domain/scoring";
 import { useLang } from "@/i18n/client";
 import { formatComposition } from "@/i18n/format";
@@ -159,6 +160,7 @@ function FavoriteRow({ p, score }: { p: FavoriteProduct; score: number }) {
       <span className={`text-lg font-medium tabular-nums ${onSale ? "text-madder" : ""}`}>{usd(p.salePrice)}</span>
       {varies(p) && <span className={`text-xs ml-0.5 ${onSale ? "text-madder" : ""}`}>{t.card.from}</span>}
       {was !== null && <span className="ml-2 text-sm text-ink-faint line-through tabular-nums">{usd(was)}</span>}
+      {p.packSize > 1 && <span className="ml-1 text-xs text-ink-soft">{t.card.pack(p.packSize)}</span>}
     </span>
   );
   return (
@@ -197,6 +199,7 @@ function FavoriteRow({ p, score }: { p: FavoriteProduct; score: number }) {
           {p.name}
         </a>
         <div className="sm:hidden">{price}</div>
+        {p.packSize > 1 && <p className="text-xs text-ink-soft">{t.card.perUnit(usd(unitPrice(p.salePrice, p.packSize)))}</p>}
         {p.drop && <span className="self-start text-xs text-madder">{t.card.dropped(Math.round(p.drop.pct * 100))}</span>}
         {varies(p) && p.priceColor && <p className="text-xs text-ink-soft">{t.card.priceColor(p.priceColor, usd(p.maxPrice))}</p>}
         {p.fibers.length > 0 && <p className="text-xs text-ink-soft">{formatComposition(lang, p.fibers)}</p>}

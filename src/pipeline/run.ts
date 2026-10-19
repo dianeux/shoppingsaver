@@ -6,6 +6,7 @@ import { colorFamily } from "@/domain/colors";
 import { dominantFiber, materialScore } from "@/domain/composition";
 import { isBrandId, type BrandId } from "@/domain/brands";
 import { productId } from "@/domain/gender";
+import { packSizeOf } from "@/domain/pack";
 import { L2_INDEX } from "@/domain/taxonomy";
 import { normalizeSize, sortSizes } from "@/domain/sizes";
 import { everlaneAdapter } from "./adapters/everlane";
@@ -134,6 +135,10 @@ async function runBrand(adapter: BrandAdapter, budget: LlmBudget): Promise<void>
         outcome = await extractComposition(compositionRaw, budget);
         if (outcome.source) stats.extracted[outcome.source]++;
       }
+      // Jewelry is mostly metal: no fiber list is the normal case there, not a parsing failure.
+      if (raw.l2 === "jewelry-hair" && outcome.status === "extraction_failed") {
+        outcome = { status: "not_disclosed", composition: null, source: null };
+      }
       // Final-status totals (drive the F21 failure-rate alert).
       if (outcome.status === "extraction_failed") stats.extracted.failed++;
       if (outcome.status === "not_disclosed") stats.extracted.notDisclosed++;
@@ -152,6 +157,7 @@ async function runBrand(adapter: BrandAdapter, budget: LlmBudget): Promise<void>
         brand,
         sourceId: raw.sourceId,
         gender: raw.gender,
+        packSize: raw.packSize ?? packSizeOf(raw.name),
         productName: raw.name,
         productUrl,
         imageUrl: raw.imageUrl,

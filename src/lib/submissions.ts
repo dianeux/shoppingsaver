@@ -39,8 +39,9 @@ async function recentEvents(ipHash: string, kind: "submit" | "report", productId
 export async function estimate(gender: Gender, l2: L2, price: number, material: number | null) {
   const [row] = await db
     .select({
-      below: sql<number>`count(*) FILTER (WHERE ${products.salePrice} < ${price})::int`,
-      equal: sql<number>`count(*) FILTER (WHERE ${products.salePrice} = ${price})::int`,
+      // Crawled multipacks compare by unit price.
+      below: sql<number>`count(*) FILTER (WHERE ${products.salePrice} / ${products.packSize} < ${price})::int`,
+      equal: sql<number>`count(*) FILTER (WHERE ${products.salePrice} / ${products.packSize} = ${price})::int`,
       n: sql<number>`count(*)::int`,
     })
     .from(products)

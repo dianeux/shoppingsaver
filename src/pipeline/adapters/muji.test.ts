@@ -47,8 +47,9 @@ describe("mapMujiCategory", () => {
     ["Winter Accessories", "Merino Wool Rib Beanie", "hats"],
   ])("falls back to the title: %s %s → %s", (pt, title, l2) => expect(mapMujiCategory(pt, [], title)).toEqual({ l2 }));
 
-  it("excludes categories outside the taxonomy without alerting", () => {
-    expect(mapMujiCategory("Winter Accessories", [], "Wool Blend Touchscreen Gloves")).toEqual({ excluded: true });
+  it("maps gloves and excludes categories outside the taxonomy without alerting", () => {
+    expect(mapMujiCategory("Winter Accessories", [], "Wool Blend Touchscreen Gloves")).toEqual({ l2: "gloves" });
+    expect(mapMujiCategory("Winter Accessories", [], "Knit Earmuffs")).toEqual({ excluded: true });
   });
 
   it("leaves unknown source categories unmapped so they raise an alert", () => {

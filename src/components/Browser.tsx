@@ -8,6 +8,7 @@ import { useLang } from "@/i18n/client";
 import { colorLabel, fiberLabel, l2Name, lexiconLabel } from "@/i18n/format";
 import { isEmptyQuery, parseQuery } from "@/domain/search";
 import type { Gender } from "@/domain/gender";
+import { unitPrice } from "@/domain/pack";
 import { DEFAULT_MATERIAL_WEIGHT } from "@/domain/scoring";
 import { L2_INDEX, type L2 } from "@/domain/taxonomy";
 import type { CardProduct } from "@/lib/types";
@@ -109,7 +110,8 @@ export function Browser({ products, gender, facetL2 = false }: { products: CardP
       relevance: matches?.get(p.id) ?? p.relevance,
       score: Math.round(100 * (weight * (p.materialScore ?? 0) + (1 - weight) * (1 - p.pricePercentile))),
     }));
-    const byPrice = (a: ScoredProduct, b: ScoredProduct) => a.salePrice - b.salePrice;
+    // Multipacks sort by the price of one item.
+    const byPrice = (a: ScoredProduct, b: ScoredProduct) => unitPrice(a.salePrice, a.packSize) - unitPrice(b.salePrice, b.packSize);
     const cmp: Record<SortKey, (a: ScoredProduct, b: ScoredProduct) => number> = {
       relevance: (a, b) => (b.relevance ?? 0) - (a.relevance ?? 0) || b.score - a.score,
       value: (a, b) => b.score - a.score || byPrice(a, b),
