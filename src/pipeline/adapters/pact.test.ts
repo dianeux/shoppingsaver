@@ -37,11 +37,13 @@ describe("groupStyles / toRawProduct", () => {
     "everyday classic fit thong 5-pack": style(colorway({ id: "w7c-mix", styleCode: "w7c", color: "mixed", packSize: 5, category: ["undies"] })),
   };
 
-  it("merges a style's regular and clearance listings and keeps multipacks out", () => {
+  it("merges a style's regular and clearance listings and keeps a multipack as its own product", () => {
     const { groups, excluded } = groupStyles(styles);
-    expect(groups).toHaveLength(1);
+    expect(groups).toHaveLength(2);
     expect(groups[0].keys).toEqual(["cloudknit jogger", "clearance cloudknit jogger"]);
-    expect(excluded).toEqual([{ key: "everyday classic fit thong 5-pack", reason: "multipack" }]);
+    expect(groups[1].styleCode).toBe("w7c-p5");
+    expect(toRawProduct(groups[1]).packSize).toBe(5);
+    expect(excluded).toEqual([]);
   });
 
   it("builds one product named and linked from the regular listing, with every colorway", () => {
@@ -81,9 +83,9 @@ describe("mapPactCategory", () => {
     ["pact floral canvas tote", ["accessories", "bags & hats"], null, "bags"],
   ])("%s → %s", (name, cats, coll, l2) => expect(m(name, cats, coll)).toEqual({ l2 }));
 
-  it("excludes multipacks and sets", () => {
-    expect(m("lace waist brief 3-pack", ["undies"], null, 3)).toEqual({ excluded: "multipack" });
-    expect(m("cloudknit ritual set", ["pants"], null, 1)).toEqual({ excluded: "multipack" });
+  it("keeps multipacks and excludes sets and bundles", () => {
+    expect(m("lace waist brief 3-pack", ["undies"], null, 3)).toEqual({ l2: "underwear" });
+    expect(m("cloudknit ritual set", ["pants"], null, 1)).toEqual({ excluded: "set or bundle" });
   });
 
   it("leaves unknown categories unmapped so they raise an alert", () => {

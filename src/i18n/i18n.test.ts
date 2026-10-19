@@ -34,6 +34,11 @@ describe("translations", () => {
     expect(formatComposition("zh", main)).toBe("60% 有機棉 · 40% 再生聚酯");
     expect(formatComposition("en", main)).toBe("60% organic cotton · 40% recycled polyester");
     expect(fiberLabel("en", "elasterell")).toBe("elasterell-P");
+    expect(formatComposition("en", [
+      { fiber: "cotton", percentage: 96, recycled: false, organic: false },
+      { fiber: "elastane", percentage: 3, recycled: false, organic: false },
+      { fiber: "elastane", percentage: 1, recycled: false, organic: false },
+    ])).toBe("96% cotton · 4% elastane");
   });
 
   it("titles men's pages in each language", () => {

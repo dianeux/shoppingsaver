@@ -65,7 +65,10 @@ const LEXICON: [string[], Entry][] = [
   [["運動褲", "瑜伽褲", "緊身褲", "legging", "leggings", "joggers"], category("運動下著", ["active-bottoms", "pants"])],
   [["襪子", "襪", "socks"], category("襪子", ["socks"])],
   [["圍巾", "scarf"], category("圍巾", ["scarves"])],
-  [["帽子", "毛帽", "髮帶", "頭帶", "頭飾", "hat", "hats", "beanie", "cap", "headband", "headbands"], category("帽子與頭飾", ["hats"])],
+  [["帽子", "毛帽", "hat", "hats", "beanie", "cap"], category("帽子", ["hats"])],
+  [["手套", "gloves", "glove", "mittens", "mitten"], category("手套", ["gloves"])],
+  [["皮帶", "腰帶", "belt", "belts"], category("皮帶", ["belts"])],
+  [["首飾", "飾品", "髮飾", "髮帶", "頭帶", "髮夾", "抓夾", "耳環", "項鍊", "手鍊", "jewelry", "earrings", "necklace", "bracelet", "headband", "headbands", "hair clip", "claw clip", "scrunchie"], category("首飾與髮飾", ["jewelry-hair"])],
   [["包包", "包", "托特包", "bag", "tote"], category("包款", ["bags"])],
 
   // Necklines

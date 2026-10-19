@@ -27,6 +27,8 @@ export interface RawProduct {
   l2: L2 | null;
   /** True when the mapping table deliberately leaves this category out (e.g. gloves). */
   excluded: boolean;
+  /** Items in a multipack when the source says so; otherwise read from the name. */
+  packSize?: number;
   /** Catalog section; null = outside both (kids, home…). */
   gender: Gender | null;
   variants: RawVariant[];

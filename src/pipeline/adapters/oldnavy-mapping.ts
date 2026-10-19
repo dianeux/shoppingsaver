@@ -1,5 +1,6 @@
 import type { Gender } from "@/domain/gender";
 import type { L2 } from "@/domain/taxonomy";
+import { accessoryMapping } from "./accessories";
 
 /**
  * Old Navy → canonical L2 mapping (PRD ch.7: hand-built, versioned).
@@ -7,7 +8,7 @@ import type { L2 } from "@/domain/taxonomy";
  * "Coats & Jackets"…) and each style with a webProductType. Rules run in order.
  * Bump the version on any edit.
  */
-export const OLDNAVY_MAPPING_VERSION = "oldnavy-2026-09-29.1";
+export const OLDNAVY_MAPPING_VERSION = "oldnavy-2026-10-18.1";
 
 export interface OldNavyStyleInfo {
   name: string;
@@ -30,13 +31,14 @@ export function mapOldNavyCategory({ name, subCategory, webProductType, subBrand
   const t = name.toLowerCase();
   const wpt = (webProductType ?? "").toLowerCase();
 
-  // Multipacks don't share a price basis with single items (same rule as Pact and Quince).
-  if (/\b\d+-pack\b/.test(t)) return { excluded: "multipack" };
   // Third-party dropship sellers and the other section's / kids' items mixed into the listing.
   if (wpt === "dropship") return { excluded: "marketplace seller" };
-  if (OTHER_SECTION[gender].wpt.test(wpt) || OTHER_SECTION[gender].title.test(t)) return { excluded: "other section" };
+  // The title wins over a mislabeled product type ("Baseball Cap for Men" typed as maternity).
+  const titledForThis = gender === "men" ? /\bfor (men|adults)\b/.test(t) : /\bfor (women|adults)\b/.test(t);
+  if ((OTHER_SECTION[gender].wpt.test(wpt) && !titledForThis) || OTHER_SECTION[gender].title.test(t)) return { excluded: "other section" };
   if (/\b(shoes|boots|sandals|flip flops)\b/.test(wpt) || subCategory === "Shoes") return { excluded: "footwear" };
   if (/swim/.test(wpt) || subCategory === "Swimsuits") return { excluded: "swimwear" };
+  if (/personal care|home products/.test(wpt)) return { excluded: "not apparel" };
 
   // Old Navy's own activewear line.
   if (subBrand === "ON_SPORT" || subCategory === "Activewear" || wpt === "womens activewear" || wpt === "mens activewear") {
@@ -95,10 +97,10 @@ export function mapOldNavyCategory({ name, subCategory, webProductType, subBrand
       return { l2: "socks" };
     case "Bags & Accessories":
     case "Accessories":
-      if (/\b(bag|tote|backpack|crossbody|clutch|purse)\b/.test(t)) return { l2: "bags" };
-      if (/\b(hat|beanie|cap|bucket)\b/.test(t)) return { l2: "hats" };
-      if (/\b(scarf|bandana)\b/.test(t)) return { l2: "scarves" };
-      return { excluded: "accessory outside taxonomy" };
+      return accessoryMapping(name);
+    case "New Arrivals":
+      // New arrivals carry no category of their own; accessories can still be read from the title.
+      return /accessor/.test(wpt) ? accessoryMapping(name) : null;
     default:
       return null;
   }

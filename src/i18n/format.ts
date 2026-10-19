@@ -36,7 +36,14 @@ export type FiberPart = Pick<FiberShare, "fiber" | "percentage" | "recycled" | "
 /** "60% 有機棉 · 40% 聚酯" / "60% organic cotton · 40% polyester", largest share first. */
 export function formatComposition(lang: Locale, main: FiberPart[]): string {
   const d = getDict(lang).composition;
-  return [...main]
+  // A label can name one fiber twice ("3% elastane, 1% spandex"); show it once.
+  const merged = new Map<string, FiberPart>();
+  for (const f of main) {
+    const key = `${f.fiber}|${f.recycled}|${f.organic}`;
+    const prev = merged.get(key);
+    merged.set(key, prev ? { ...prev, percentage: prev.percentage + f.percentage } : f);
+  }
+  return [...merged.values()]
     .sort((a, b) => b.percentage - a.percentage)
     .map((f) => `${f.percentage}% ${f.recycled ? d.recycled : ""}${f.organic ? d.organic : ""}${fiberLabel(lang, f.fiber)}`)
     .join(" · ");
@@ -48,7 +55,7 @@ const LEXICON_EN: Record<string, string> = {
   "Polo 衫": "Polos", 外套: "Outerwear", 夾克: "Jackets", 大衣: "Coats", 羽絨與鋪棉: "Down & padded", 牛仔褲: "Jeans", 長褲: "Pants",
   棉褲: "Sweatpants", 裙子: "Skirts", 短褲: "Shorts", 洋裝: "Dresses", 連身褲: "Jumpsuits", 內衣: "Bras", 內褲: "Underwear",
   打底: "Base layers", 家居服: "Loungewear", 睡衣: "Pajamas", 運動上衣: "Active tops", 運動下著: "Active bottoms", 襪子: "Socks",
-  圍巾: "Scarves", 帽子與頭飾: "Hats & headwear", 包款: "Bags",
+  圍巾: "Scarves", 帽子: "Hats", 手套: "Gloves", 皮帶: "Belts", 首飾與髮飾: "Jewelry & hair accessories", 包款: "Bags",
   低胸: "Low neckline", "V 領": "V-neck", 圓領: "Crew neck", 方領: "Square neck", 一字領: "Boat neck", 高領: "High neck",
   露肩: "Off-shoulder", 平口: "Strapless", 細肩帶: "Spaghetti strap", 無袖: "Sleeveless", 短袖: "Short sleeve", 長袖: "Long sleeve",
   七分袖: "3/4 sleeve", 短版: "Cropped", 長版: "Longline", 寬鬆: "Relaxed", 修身: "Fitted", 寬褲: "Wide-leg", 直筒: "Straight",

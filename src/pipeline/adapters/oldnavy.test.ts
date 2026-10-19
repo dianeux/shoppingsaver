@@ -54,7 +54,14 @@ describe("mapOldNavyCategory", () => {
     expect(mapOldNavyCategory({ name: "Crew-Neck T-Shirt", subCategory: "T-Shirts & Tanks", webProductType: "mens tees", subBrand: null }, "men")).toEqual({ l2: "tshirts" });
     expect(m("Faux-Suede Ankle Boots", "Shoes", "womens boots")).toEqual({ excluded: "footwear" });
     expect(m("Ribbed Bikini Top", "Swimsuits", "womens swimwear")).toEqual({ excluded: "swimwear" });
-    expect(m("Gold-Tone Hoop Earrings", "Bags & Accessories", "womens accessories")).toEqual({ excluded: "accessory outside taxonomy" });
+    expect(m("Croc-Embossed Card Holder", "Bags & Accessories", "womens accessories")).toEqual({ excluded: "accessory outside taxonomy" });
+    expect(m("Gold-Tone Hoop Earrings", "Bags & Accessories", "womens accessories")).toEqual({ l2: "jewelry-hair" });
+    expect(m("Fairisle Mittens for Women", "Bags & Accessories", "womens accessories")).toEqual({ l2: "gloves" });
+    expect(m("Gold-Nugget Buckle Faux-Leather Belt", "Bags & Accessories", "womens accessories")).toEqual({ l2: "belts" });
+    // Multipacks are kept now and compared by unit price.
+    expect(m("Quarter Crew Socks 3-Pack for Women", "Socks & Tights", "womens accessories")).toEqual({ l2: "socks" });
+    // A mislabeled product type doesn't override a title that says who it's for.
+    expect(mapOldNavyCategory({ name: "Baseball Cap for Men", subCategory: "Accessories", webProductType: "maternity accessories", subBrand: null }, "men")).toEqual({ l2: "hats" });
   });
 });
 

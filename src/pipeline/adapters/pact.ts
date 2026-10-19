@@ -75,7 +75,8 @@ export interface PactGroup {
 
 /**
  * Merge a style's regular and clearance listings (same style code) into one
- * product, and keep multipacks/sets apart — they share the code but not the price basis.
+ * product. A multipack shares the code with the single item, so it's its own
+ * product (`<code>-p<n>`), compared by unit price.
  */
 export function groupStyles(styles: Record<string, PactStyle>, gender: Gender = "women"): { groups: PactGroup[]; excluded: { key: string; reason: string }[] } {
   const groups = new Map<string, PactGroup>();
@@ -94,7 +95,9 @@ export function groupStyles(styles: Record<string, PactStyle>, gender: Gender = 
       excluded.push({ key, reason: mapping.excluded });
       continue;
     }
-    const g = groups.get(first.styleCode) ?? { styleCode: first.styleCode, keys: [], colorways: [] };
+    const pack = first.packSize ?? 1;
+    const groupKey = pack > 1 ? `${first.styleCode}-p${pack}` : first.styleCode;
+    const g = groups.get(groupKey) ?? { styleCode: groupKey, keys: [], colorways: [] };
     g.keys.push(key);
     for (const c of cws) {
       const dup = g.colorways.findIndex((x) => x.id === c.id);
@@ -102,7 +105,7 @@ export function groupStyles(styles: Record<string, PactStyle>, gender: Gender = 
       if (dup < 0) g.colorways.push(c);
       else if (inStock(c) > inStock(g.colorways[dup])) g.colorways[dup] = c;
     }
-    groups.set(first.styleCode, g);
+    groups.set(groupKey, g);
   }
   for (const g of groups.values()) g.keys.sort((a, b) => Number(/^clearance/i.test(a)) - Number(/^clearance/i.test(b)));
   return { groups: [...groups.values()], excluded };
@@ -151,6 +154,7 @@ export function toRawProduct(g: PactGroup, gender: Gender = "women"): RawProduct
     l2: mapping && "l2" in mapping ? mapping.l2 : null,
     excluded: false,
     gender,
+    packSize: lead.packSize ?? 1,
     variants,
     tags: [...categories, ...(lead.collectionCode ? [lead.collectionCode] : []), ...(g.keys.some((k) => /^clearance/i.test(k)) ? ["clearance"] : [])],
     compositionText: compositionText ?? null,

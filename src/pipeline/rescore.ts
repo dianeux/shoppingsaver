@@ -8,6 +8,7 @@ import { DEFAULT_MATERIAL_WEIGHT } from "@/domain/scoring";
  * compare against), then the default-weight value score. Runs after every brand has loaded, because a new
  * brand shifts every other product's percentile.
  *
+ * Multipacks rank by unit price (sale_price / pack_size).
  * Same mid-rank definition as domain/scoring.ts `percentiles`:
  *   (count below + ½ count equal) / n
  */
@@ -16,8 +17,8 @@ export async function rescoreAll() {
   await db.execute(sql`
     WITH ranked AS (
       SELECT id,
-        ( (rank() OVER (PARTITION BY gender, category_l2 ORDER BY sale_price) - 1)
-          + 0.5 * count(*) OVER (PARTITION BY gender, category_l2, sale_price)
+        ( (rank() OVER (PARTITION BY gender, category_l2 ORDER BY sale_price / pack_size) - 1)
+          + 0.5 * count(*) OVER (PARTITION BY gender, category_l2, sale_price / pack_size)
         )::real / count(*) OVER (PARTITION BY gender, category_l2) AS pct
       FROM products
       WHERE active AND in_stock AND source = 'crawl'
@@ -46,7 +47,8 @@ export async function rescoreSubmissions(ids?: string[]) {
         value_score = round(100 * (${w}::real * coalesce(u.material_score, 0) + (1 - ${w}::real) * (1 - r.pct)))
     FROM (
       SELECT u.id, coalesce((
-        SELECT (count(*) FILTER (WHERE c.sale_price < u.sale_price) + 0.5 * count(*) FILTER (WHERE c.sale_price = u.sale_price))::real
+        SELECT (count(*) FILTER (WHERE c.sale_price / c.pack_size < u.sale_price / u.pack_size)
+                + 0.5 * count(*) FILTER (WHERE c.sale_price / c.pack_size = u.sale_price / u.pack_size))::real
                / nullif(count(*), 0)
         FROM products c
         WHERE c.source = 'crawl' AND c.active AND c.in_stock AND c.gender = u.gender AND c.category_l2 = u.category_l2

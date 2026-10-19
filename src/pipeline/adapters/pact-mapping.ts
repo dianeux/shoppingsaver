@@ -6,7 +6,7 @@ import type { L2 } from "@/domain/taxonomy";
  * "pants", "sweatpants"…) plus a collection code. Rules run in order; first match wins.
  * Bump the version on any edit.
  */
-export const PACT_MAPPING_VERSION = "pact-2026-09-29.1";
+export const PACT_MAPPING_VERSION = "pact-2026-10-18.1";
 
 /** Pact's own movement line — its pieces go to the Sports (activewear) group. */
 const ACTIVE_COLLECTIONS = new Set(["W-ONTHGO"]);
@@ -20,12 +20,12 @@ export interface PactStyleInfo {
 
 export type PactMapping = { l2: L2 } | { excluded: string } | null;
 
-export function mapPactCategory({ name, categories, collectionCode, packSize }: PactStyleInfo): PactMapping {
+export function mapPactCategory({ name, categories, collectionCode }: PactStyleInfo): PactMapping {
   const has = (...c: string[]) => c.some((x) => categories.includes(x));
   const title = name.toLowerCase();
 
-  // Multipacks and sets share a style code with the single item but not its price basis.
-  if (packSize > 1 || /\b\d+-pack\b|\bset\b|\bbundle\b/.test(title)) return { excluded: "multipack" };
+  // Multipacks are kept (compared by unit price); sets and bundles mix different items.
+  if (/\bset\b|\bbundle\b/.test(title)) return { excluded: "set or bundle" };
 
   if (has("socks")) return { l2: "socks" };
   if (has("bags & hats")) return { l2: /\b(hat|cap|beanie)\b/.test(title) ? "hats" : "bags" };

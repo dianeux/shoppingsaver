@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "pack_size" integer DEFAULT 1 NOT NULL;

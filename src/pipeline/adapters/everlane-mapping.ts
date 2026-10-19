@@ -1,4 +1,5 @@
 import type { L2 } from "@/domain/taxonomy";
+import { accessoryMapping } from "./accessories";
 
 /**
  * Everlane → canonical L2 mapping (PRD ch.7: hand-built, versioned).
@@ -6,7 +7,7 @@ import type { L2 } from "@/domain/taxonomy";
  * items come with an empty product_type and fall back to the title.
  * Bump the version on any edit.
  */
-export const EVERLANE_MAPPING_VERSION = "everlane-2026-09-29.1";
+export const EVERLANE_MAPPING_VERSION = "everlane-2026-10-18.1";
 
 export type EverlaneMapping = { l2: L2 } | { excluded: string } | null;
 
@@ -76,7 +77,9 @@ export function mapEverlaneCategory(productType: string, subcategory: string | n
     case "Accessories":
       if (sub === "scarves") return { l2: "scarves" };
       if (sub === "beanies" || sub === "hats") return { l2: "hats" };
-      return null;
+      if (sub === "belts") return { l2: "belts" };
+      if (sub === "gloves") return { l2: "gloves" };
+      return accessoryMapping(title, null);
     case "":
       return byTitle(title);
     default:

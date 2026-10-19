@@ -6,6 +6,7 @@ import { BRANDS } from "@/domain/brands";
 import { COLOR_FAMILY_LABEL } from "@/domain/colors";
 import { useLang } from "@/i18n/client";
 import { formatComposition, href } from "@/i18n/format";
+import { unitPrice } from "@/domain/pack";
 import { thumb, usd } from "@/lib/format";
 import type { CardProduct } from "@/lib/types";
 import { FavoriteButton } from "./FavoriteButton";
@@ -85,6 +86,7 @@ export function ProductCard({
           <span className={`font-mono text-[15px] font-medium ${onSale || p.drop ? "text-madder" : ""}`}>
             {usd(p.salePrice)}
             {priceVaries && <span className="text-xs ml-0.5">{t.card.from}</span>}
+            {p.packSize > 1 && <span className="text-xs font-normal ml-1 text-ink-soft">{t.card.pack(p.packSize)}</span>}
           </span>
           {p.drop ? (
             <span className="font-mono text-xs text-ink-soft">
@@ -94,6 +96,7 @@ export function ProductCard({
             onSale && <span className="font-mono text-xs text-ink-soft line-through">{usd(p.listPrice)}</span>
           )}
         </div>
+        {p.packSize > 1 && <p className="mt-1 text-xs text-ink-soft">{t.card.perUnit(usd(unitPrice(p.salePrice, p.packSize)))}</p>}
         {priceVaries && p.priceColor && (
           <p className="mt-1 text-xs leading-snug text-ink-soft">
             {t.card.priceColor(p.priceColor, usd(p.maxPrice))}
