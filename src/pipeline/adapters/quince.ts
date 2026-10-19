@@ -24,6 +24,7 @@ const COLLECTIONS: { path: string; genders: Record<string, Gender[]> }[] = [
   { path: "/shop/men/apparel", genders: { male: ["men"] } },
   { path: "/shop/bags-&-accessories/hats-scarves-and-gloves", genders: ACCESSORY_GENDERS },
   { path: "/shop/bags-&-accessories/bags", genders: ACCESSORY_GENDERS },
+  { path: "/shop/bags-&-accessories/sunglasses", genders: ACCESSORY_GENDERS },
 ];
 const WIDGET_API = "https://api-prod-public.onequince.com/presentation-layer-service/widgets/fetch/v1";
 const PAGE_SIZE = 100;

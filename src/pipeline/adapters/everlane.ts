@@ -16,6 +16,9 @@ const ORIGIN = "https://www.everlane.com";
 const SECTIONS: { gender: Gender; collection: string; tag: string }[] = [
   { gender: "women", collection: "womens-all", tag: "female" },
   { gender: "men", collection: "shop-all-mens-clothing", tag: "male" },
+  // Most accessories (beanies, scarves, socks, bags) live outside the clothing collections.
+  { gender: "women", collection: "womens-all-accessories", tag: "female" },
+  { gender: "men", collection: "mens-all-shoes-accessories", tag: "male" },
 ];
 
 /** Bump when extraction logic changes so stored results are re-extracted. */
@@ -42,7 +45,8 @@ export function splitTitle(title: string): { name: string; color: string } {
 export function groupColorways(list: ShopifyProduct[], genderTag = "female"): ShopifyProduct[][] {
   const groups = new Map<string, ShopifyProduct[]>();
   for (const p of list) {
-    if (!p.tags.includes(genderTag)) continue;
+    // Shared accessories are tagged "unisex"; they belong to both sections.
+    if (!p.tags.includes(genderTag) && !p.tags.includes("unisex")) continue;
     const key = tagValue(p, "product group") ?? p.handle;
     groups.set(key, [...(groups.get(key) ?? []), p]);
   }
@@ -96,10 +100,17 @@ export const everlaneAdapter: BrandAdapter = {
   mappingVersion: EVERLANE_MAPPING_VERSION,
 
   async *list() {
+    // A product can be in a clothing and an accessories collection; list it once per section.
+    const seen = new Set<string>();
     for (const { gender, collection, tag } of SECTIONS) {
       const all: ShopifyProduct[] = [];
       for await (const p of listShopifyCollection("everlane", ORIGIN, collection)) all.push(p);
-      for (const g of groupColorways(all, tag)) yield toRawProduct(g, gender);
+      for (const g of groupColorways(all, tag)) {
+        const raw = toRawProduct(g, gender);
+        if (seen.has(`${gender}:${raw.sourceId}`)) continue;
+        seen.add(`${gender}:${raw.sourceId}`);
+        yield raw;
+      }
     }
   },
 

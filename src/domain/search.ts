@@ -68,6 +68,7 @@ const LEXICON: [string[], Entry][] = [
   [["帽子", "毛帽", "hat", "hats", "beanie", "cap"], category("帽子", ["hats"])],
   [["手套", "gloves", "glove", "mittens", "mitten"], category("手套", ["gloves"])],
   [["皮帶", "腰帶", "belt", "belts"], category("皮帶", ["belts"])],
+  [["太陽眼鏡", "墨鏡", "sunglasses", "shades"], category("太陽眼鏡", ["sunglasses"])],
   [["首飾", "飾品", "髮飾", "髮帶", "頭帶", "髮夾", "抓夾", "耳環", "項鍊", "手鍊", "jewelry", "earrings", "necklace", "bracelet", "headband", "headbands", "hair clip", "claw clip", "scrunchie"], category("首飾與髮飾", ["jewelry-hair"])],
   [["包包", "包", "托特包", "bag", "tote"], category("包款", ["bags"])],
 

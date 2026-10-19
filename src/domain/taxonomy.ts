@@ -80,6 +80,7 @@ export const TAXONOMY = [
       { l2: "gloves", name: "手套" },
       { l2: "belts", name: "皮帶" },
       { l2: "jewelry-hair", name: "首飾與髮飾" },
+      { l2: "sunglasses", name: "太陽眼鏡" },
       { l2: "bags", name: "包款" },
     ],
   },

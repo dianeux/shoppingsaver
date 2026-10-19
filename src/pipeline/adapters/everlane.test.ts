@@ -71,3 +71,26 @@ describe("mapEverlaneCategory", () => {
     expect(mapEverlaneCategory("", null, "Everlane x Peace & Quiet Welcome Mat")).toEqual({ excluded: "not apparel" });
   });
 });
+
+describe("mapEverlaneCategory — accessories", () => {
+  it("maps accessory subcategories and untyped collaboration accessories by title", () => {
+    expect(mapEverlaneCategory("Accessories", "socks", "The Organic Cotton Ribbed Crew Sock 3-Pack | Black")).toEqual({ l2: "socks" });
+    expect(mapEverlaneCategory("Accessories", "other accessories", "The Cashmere Mittens | Black")).toEqual({ l2: "gloves" });
+    expect(mapEverlaneCategory("Accessories", "other accessories", "The ReNew Transit Baby Bundle | Black")).toEqual({ excluded: "accessory outside taxonomy" });
+    expect(mapEverlaneCategory("", null, "Cashmere Snood | Heather Mid Grey")).toEqual({ l2: "scarves" });
+    expect(mapEverlaneCategory("", null, '7" Swim Trunk | Navy')).toEqual({ excluded: "swimwear" });
+    expect(mapEverlaneCategory("", null, "No-Sweat Textured Zip Polo | Black")).toEqual({ l2: "polos" });
+  });
+});
+
+describe("groupColorways — unisex", () => {
+  it("keeps unisex-tagged accessories in either section", () => {
+    const p = (handle: string, tags: string[]): ShopifyProduct => ({
+      id: handle.length, title: `${handle} | Black`, handle, body_html: null, product_type: "Accessories", tags: [...tags, `Product Group: ${handle}`],
+      options: [], images: [], variants: [{ id: 1, option1: "One Size", option2: null, option3: null, price: "50", compare_at_price: null, available: true, featured_image: null }],
+    });
+    const list = [p("scarf", ["unisex"]), p("tee", ["female"]), p("boxer", ["male"])];
+    expect(groupColorways(list, "female").map((g) => g[0].handle)).toEqual(["scarf", "tee"]);
+    expect(groupColorways(list, "male").map((g) => g[0].handle)).toEqual(["scarf", "boxer"]);
+  });
+});
