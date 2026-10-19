@@ -139,3 +139,9 @@ describe("Quince bags collection extras", () => {
     expect(mapQuinceCategory("Everyday Backpack", { department: "Unisex", subdepartment: "Accessories", class: "Backpacks" })).toEqual({ l2: "bags" });
   });
 });
+
+describe("Quince eyewear", () => {
+  it("maps sunglasses", () => {
+    expect(mapQuinceCategory("Barcelona Polarized Acetate Sunglasses", { department: "Eyewear", subdepartment: "Acetate", class: "Sunglasses" })).toEqual({ l2: "sunglasses" });
+  });
+});

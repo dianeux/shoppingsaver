@@ -7,7 +7,7 @@ import { accessoryMapping } from "./accessories";
  * items come with an empty product_type and fall back to the title.
  * Bump the version on any edit.
  */
-export const EVERLANE_MAPPING_VERSION = "everlane-2026-10-18.1";
+export const EVERLANE_MAPPING_VERSION = "everlane-2026-10-18.2";
 
 export type EverlaneMapping = { l2: L2 } | { excluded: string } | null;
 
@@ -22,6 +22,8 @@ function outerwear(title: string): L2 {
 function byTitle(title: string): EverlaneMapping {
   if (/\b(mary jane|flat|sandal|boot|sneaker|loafer|heel)s?\b/.test(title)) return { excluded: "footwear" };
   if (/\b(mat|journal|candle|mug|pillow|blanket|notebook)s?\b/.test(title)) return { excluded: "not apparel" };
+  if (/\bswim/.test(title)) return { excluded: "swimwear" };
+  if (/\bpolo\b/.test(title)) return { l2: "polos" };
   if (/\b(sweatshirt|hoodie)\b/.test(title)) return { l2: "sweatshirts-hoodies" };
   if (/\bjeans?\b/.test(title)) return { l2: "jeans" };
   if (/\b(sweatpants?|joggers?)\b/.test(title)) return { l2: "pants" };
@@ -36,7 +38,8 @@ function byTitle(title: string): EverlaneMapping {
   if (/\b(tote|bag|backpack|crossbody)\b/.test(title)) return { l2: "bags" };
   if (/\b(beanie|hat|cap)\b/.test(title)) return { l2: "hats" };
   if (/\b(jacket|coat|blazer)\b/.test(title)) return { l2: outerwear(title) };
-  return null;
+  // Collaboration accessories (snoods, mittens…) with no product type.
+  return accessoryMapping(title, null);
 }
 
 export function mapEverlaneCategory(productType: string, subcategory: string | null, rawTitle: string): EverlaneMapping {
@@ -79,7 +82,9 @@ export function mapEverlaneCategory(productType: string, subcategory: string | n
       if (sub === "beanies" || sub === "hats") return { l2: "hats" };
       if (sub === "belts") return { l2: "belts" };
       if (sub === "gloves") return { l2: "gloves" };
-      return accessoryMapping(title, null);
+      if (sub === "socks") return { l2: "socks" };
+      // "other accessories" mixes mittens with travel kits; unknown ones are left out.
+      return accessoryMapping(title, sub === "other accessories" ? { excluded: "accessory outside taxonomy" } : null);
     case "":
       return byTitle(title);
     default:

@@ -27,6 +27,7 @@ describe("accessoryFromTitle", () => {
     ["Faux-Leather Belt", "belts"],
     ["Cable-Knit Beanie", "hats"],
     ["Oversized Blanket Scarf", "scarves"],
+    ["Barcelona Polarized Acetate Sunglasses", "sunglasses"],
     ["Croc-Embossed Card Holder", "excluded"],
     ["Stitch Plush Keychain Bag Charm", "excluded"],
     ["Crew-Neck T-Shirt", null],

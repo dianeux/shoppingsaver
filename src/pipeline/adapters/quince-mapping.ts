@@ -6,7 +6,7 @@ import type { L2 } from "@/domain/taxonomy";
  * (e.g. "Bottoms / Denim / Pants"). Rules run in order; first match wins.
  * Bump the version on any edit.
  */
-export const QUINCE_MAPPING_VERSION = "quince-2026-10-18.1";
+export const QUINCE_MAPPING_VERSION = "quince-2026-10-18.2";
 
 export interface QuinceClassification {
   department?: string | null;
@@ -59,6 +59,8 @@ export function mapQuinceCategory(title: string, c: QuinceClassification): Quinc
       return null;
     case "Bags":
       return { l2: "bags" };
+    case "Eyewear":
+      return { l2: "sunglasses" };
     case "Unisex":
       return cls === "Backpacks" ? { l2: "bags" } : null;
     // Listed with bags but outside the taxonomy.

@@ -135,8 +135,8 @@ async function runBrand(adapter: BrandAdapter, budget: LlmBudget): Promise<void>
         outcome = await extractComposition(compositionRaw, budget);
         if (outcome.source) stats.extracted[outcome.source]++;
       }
-      // Jewelry is mostly metal: no fiber list is the normal case there, not a parsing failure.
-      if (raw.l2 === "jewelry-hair" && outcome.status === "extraction_failed") {
+      // Jewelry and sunglasses are metal or plastic: no fiber list is normal there, not a parsing failure.
+      if ((raw.l2 === "jewelry-hair" || raw.l2 === "sunglasses") && outcome.status === "extraction_failed") {
         outcome = { status: "not_disclosed", composition: null, source: null };
       }
       // Final-status totals (drive the F21 failure-rate alert).
