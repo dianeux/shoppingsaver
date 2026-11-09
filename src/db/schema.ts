@@ -102,6 +102,8 @@ export interface CrawlStats {
   extracted: { parser: number; llm: number; failed: number; notDisclosed: number; reused: number };
   unmappedColors: Record<string, number>;
   deactivated: number;
+  /** Listed products whose product page returned 404/410; skipped. */
+  pageGone?: number;
 }
 
 /** One row per brand per nightly run. Drives F7 (degraded notice), F20 (freshness) and F21 (quality alerts). */

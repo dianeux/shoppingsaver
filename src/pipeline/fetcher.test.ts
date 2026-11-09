@@ -35,4 +35,18 @@ describe("brandFetch network resilience", () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw dnsError(); }));
     await expect(brandText("pact", "https://wearpact.com/women")).rejects.toThrow("fetch failed");
   });
+
+  it("reports a removed page as an HttpError with its status, without retrying", async () => {
+    const { brandText, HttpError } = await import("./fetcher");
+    let pageCalls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.endsWith("robots.txt")) return ok("User-agent: *\nAllow: /", url);
+      pageCalls++;
+      return Object.defineProperty(new Response("gone", { status: 404, statusText: "Not Found" }), "url", { value: url });
+    }));
+    const err = await brandText("everlane", "https://www.everlane.com/products/removed").catch((e) => e);
+    expect(err).toBeInstanceOf(HttpError);
+    expect(err.status).toBe(404);
+    expect(pageCalls).toBe(1);
+  });
 });

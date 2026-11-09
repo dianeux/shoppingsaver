@@ -15,6 +15,7 @@ import { oldNavyAdapter } from "./adapters/oldnavy";
 import { pactAdapter } from "./adapters/pact";
 import { quinceAdapter } from "./adapters/quince";
 import { extractComposition, LlmBudget } from "./extract";
+import { HttpError } from "./fetcher";
 import { detectPriceDrops } from "./drops";
 import { productPrice } from "./pricing";
 import { rescoreAll } from "./rescore";
@@ -112,7 +113,6 @@ async function runBrand(adapter: BrandAdapter, budget: LlmBudget): Promise<void>
       if (raw.variants.length === 0) continue;
 
       const id = productId(brand, raw.sourceId, raw.gender);
-      seen.push(id);
       const prev = existing.get(id);
 
       // Composition: only new or changed products hit the network or the LLM.
@@ -129,12 +129,24 @@ async function runBrand(adapter: BrandAdapter, budget: LlmBudget): Promise<void>
       } else {
         compositionRaw = raw.compositionText;
         if (!compositionRaw) {
-          compositionRaw = (await adapter.fetchDetail(raw)).compositionText;
+          try {
+            compositionRaw = (await adapter.fetchDetail(raw)).compositionText;
+          } catch (err) {
+            // Listings can lag behind the site: a product whose page is gone is skipped (and so
+            // deactivated if it was known) instead of failing the whole brand.
+            if (err instanceof HttpError && (err.status === 404 || err.status === 410)) {
+              stats.pageGone = (stats.pageGone ?? 0) + 1;
+              console.warn(`[${brand}] product page gone, skipped: ${raw.url}`);
+              continue;
+            }
+            throw err;
+          }
           stats.detailFetched++;
         }
         outcome = await extractComposition(compositionRaw, budget);
         if (outcome.source) stats.extracted[outcome.source]++;
       }
+      seen.push(id);
       // Jewelry and sunglasses are metal or plastic: no fiber list is normal there, not a parsing failure.
       if ((raw.l2 === "jewelry-hair" || raw.l2 === "sunglasses") && outcome.status === "extraction_failed") {
         outcome = { status: "not_disclosed", composition: null, source: null };
