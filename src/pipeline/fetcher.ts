@@ -30,6 +30,13 @@ export function isTransientNetworkError(err: unknown): boolean {
 
 export class DisallowedError extends Error {}
 
+/** A non-OK HTTP response that retries didn't fix; `status` lets callers tell "gone" from "broken". */
+export class HttpError extends Error {
+  constructor(readonly status: number, statusText: string, url: string) {
+    super(`${status} ${statusText} for ${url}`);
+  }
+}
+
 interface RobotsRules {
   disallow: string[];
   allow: string[];
@@ -146,7 +153,7 @@ export async function brandFetch(brand: BrandId, url: string, init?: RequestInit
     assertOfficial(brand, res.url || url);
     if (res.ok) return res;
     const retriable = res.status === 429 || res.status >= 500;
-    if (!retriable || attempt >= MAX_RETRIES) throw new Error(`${res.status} ${res.statusText} for ${url}`);
+    if (!retriable || attempt >= MAX_RETRIES) throw new HttpError(res.status, res.statusText, url);
     const retryAfter = Number(res.headers.get("retry-after"));
     await sleep(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 2000 * 2 ** attempt);
   }
